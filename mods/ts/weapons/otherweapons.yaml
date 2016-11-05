@@ -20,6 +20,7 @@ FireballLauncher:
 		DamageTypes: Prone100Percent, TriggerProne, FireDeath
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: SmallScorch
+		InvalidTargets: Vehicle, Building, Wall
 
 FiendShard:
 	ReloadDelay: 30
@@ -31,7 +32,7 @@ FiendShard:
 		Image: CRYSTAL4
 		Inaccuracy: 512
 		Shadow: true
-		Angle: 60
+		LaunchAngle: 60
 		Palette: greentiberium
 	Warhead@1Dam: SpreadDamage
 		Damage: 35
@@ -60,9 +61,12 @@ SlimeAttack:
 			Concrete: 20
 		DamageTypes: Prone100Percent, TriggerProne, SmallExplosionDeath
 
-Tiberium:
+Veins:
 	ReloadDelay: 16
-	Warhead@1Dam: SpreadDamage
+	Warhead@Damage: SpreadDamage
 		Spread: 42
-		Damage: 2
-		DamageTypes: EnergyDeath # TODO: FIX ME!
+		Damage: 5
+		DamageTypes: BulletDeath
+	Warhead@Effect: CreateEffect
+		Explosions: veins
+		ExplosionPalette: player

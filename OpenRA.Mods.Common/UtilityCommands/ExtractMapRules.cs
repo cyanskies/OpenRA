@@ -36,7 +36,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 				{
 					include |= map.Package.Contains(f);
 					if (include)
-						nodes.AddRange(MiniYaml.FromStream(map.Open(f)));
+						nodes.AddRange(MiniYaml.FromStream(map.Open(f), f));
 					else
 						includes.Add(f);
 				}
@@ -50,11 +50,11 @@ namespace OpenRA.Mods.Common.UtilityCommands
 		}
 
 		[Desc("MAPFILE", "Merge custom map rules into a form suitable for including in map.yaml.")]
-		void IUtilityCommand.Run(ModData modData, string[] args)
+		void IUtilityCommand.Run(Utility utility, string[] args)
 		{
-			Game.ModData = modData;
+			var modData = Game.ModData = utility.ModData;
 
-			var map = new Map(modData, modData.ModFiles.OpenPackage(args[1]));
+			var map = new Map(modData, modData.ModFiles.OpenPackage(args[1], new Folder(".")));
 			MergeAndPrint(map, "Rules", map.RuleDefinitions);
 			MergeAndPrint(map, "Sequences", map.SequenceDefinitions);
 			MergeAndPrint(map, "VoxelSequences", map.VoxelSequenceDefinitions);

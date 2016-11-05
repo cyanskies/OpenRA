@@ -38,22 +38,20 @@ if (!(Test-Path "ICSharpCode.SharpZipLib.dll"))
 if (!(Test-Path "MaxMind.GeoIP2.dll"))
 {
 	echo "Fetching MaxMind.GeoIP2 from NuGet."
-	./nuget.exe install MaxMind.GeoIP2 -Version 2.3.1 -ExcludeVersion
-	cp MaxMind.Db/lib/net40/MaxMind.Db.* .
+	./nuget.exe install MaxMind.GeoIP2 -Version 2.6.0 -ExcludeVersion
+	cp MaxMind.Db/lib/net45/MaxMind.Db.* .
 	rmdir MaxMind.Db -Recurse
-	cp MaxMind.GeoIP2/lib/net40/MaxMind.GeoIP2* .
+	cp MaxMind.GeoIP2/lib/net45/MaxMind.GeoIP2* .
 	rmdir MaxMind.GeoIP2 -Recurse
-	cp Newtonsoft.Json/lib/net40/Newtonsoft.Json* .
+	cp Newtonsoft.Json/lib/net45/Newtonsoft.Json* .
 	rmdir Newtonsoft.Json -Recurse
-	cp RestSharp/lib/net4-client/RestSharp* .
-	rmdir RestSharp -Recurse
 }
 
 if (!(Test-Path "SharpFont.dll"))
 {
 	echo "Fetching SharpFont from NuGet."
-	./nuget.exe install SharpFont -Version 3.1.0 -ExcludeVersion
-	cp SharpFont/lib/net20/SharpFont* .
+	./nuget.exe install SharpFont -Version 4.0.1 -ExcludeVersion
+	cp SharpFont/lib/net45/SharpFont* .
 	cp SharpFont/config/SharpFont.dll.config .
 	rmdir SharpFont -Recurse
 	rmdir SharpFont.Dependencies -Recurse
@@ -88,12 +86,12 @@ if (!(Test-Path "windows/SDL2.dll"))
 	rm -path "$currentPath\windows\README-SDL.txt"
 }
 
-if (!(Test-Path "Mono.Nat.dll"))
+if (!(Test-Path "Open.Nat.dll"))
 {
-	echo "Fetching Mono.Nat from NuGet."
-	./nuget.exe install Mono.Nat -Version 1.2.24 -ExcludeVersion
-	cp Mono.Nat/lib/net40/Mono.Nat.dll .
-	rmdir Mono.Nat -Recurse
+	echo "Fetching Open.Nat from NuGet."
+	./nuget.exe install Open.Nat -Version 2.1.0 -ExcludeVersion
+	cp Open.Nat/lib/net45/Open.Nat.dll .
+	rmdir Open.Nat -Recurse
 }
 
 if (!(Test-Path "windows/lua51.dll"))

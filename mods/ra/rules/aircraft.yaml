@@ -15,6 +15,8 @@ BADR:
 	Cargo:
 		MaxWeight: 10
 	-Selectable:
+	SelectionDecorations:
+		RenderSelectionBars: False
 	-Voiced:
 	-GainsExperience:
 	Tooltip:
@@ -33,6 +35,8 @@ BADR:
 		Interval: 2
 	-EjectOnDeath:
 	RejectsOrders:
+	GivesExperience:
+		Experience: 1000
 
 BADR.Bomber:
 	Inherits: ^Plane
@@ -52,6 +56,8 @@ BADR.Bomber:
 	AmmoPool:
 		Ammo: 7
 	-Selectable:
+	SelectionDecorations:
+		RenderSelectionBars: False
 	-Voiced:
 	-GainsExperience:
 	Tooltip:
@@ -72,6 +78,8 @@ BADR.Bomber:
 	RejectsOrders:
 	RenderSprites:
 		Image: badr
+	GivesExperience:
+		Experience: 1000
 
 MIG:
 	Inherits: ^Plane
@@ -80,11 +88,11 @@ MIG:
 		BuildAtProductionType: Plane
 		BuildPaletteOrder: 50
 		Prerequisites: ~afld, stek, ~techlevel.high
+		Description: Fast Ground-Attack Plane.\n  Strong vs Buildings, Tanks\n  Weak vs Infantry, Light armor, Aircraft
 	Valued:
 		Cost: 2000
 	Tooltip:
 		Name: Mig Attack Plane
-		Description: Fast Ground-Attack Plane.\n  Strong vs Buildings, Tanks\n  Weak vs Infantry, Light armor, Aircraft
 	Health:
 		HP: 70
 	Armor:
@@ -135,11 +143,11 @@ YAK:
 		BuildAtProductionType: Plane
 		BuildPaletteOrder: 30
 		Prerequisites: ~afld, ~techlevel.medium
+		Description: Anti-Tanks & Anti-Infantry Plane.\n  Strong vs Infantry, Vehicles\n  Weak vs Aircraft
 	Valued:
 		Cost: 1350
 	Tooltip:
 		Name: Yak Attack Plane
-		Description: Anti-Tanks & Anti-Infantry Plane.\n  Strong vs Infantry, Vehicles\n  Weak vs Aircraft
 	Health:
 		HP: 60
 	Armor:
@@ -194,11 +202,11 @@ TRAN:
 		BuildAtProductionType: Helicopter
 		BuildPaletteOrder: 10
 		Prerequisites: ~hpad, ~techlevel.medium
+		Description: Fast Infantry Transport Helicopter.\n  Unarmed
 	Valued:
 		Cost: 900
 	Tooltip:
 		Name: Transport Helicopter
-		Description: Fast Infantry Transport Helicopter.\n  Unarmed
 	Health:
 		HP: 120
 	Armor:
@@ -210,14 +218,28 @@ TRAN:
 		InitialFacing: 224
 		TurnSpeed: 5
 		Speed: 112
-		LandableTerrainTypes: Clear,Rough,Road,Ore,Beach
+		LandableTerrainTypes: Clear,Rough,Road,Ore,Beach,Gems
 		AltitudeVelocity: 0c100
-	WithSpriteRotorOverlay@PRIMARY:
+	WithIdleOverlay@ROTOR1AIR:
+		Offset: 597,0,213
+		Sequence: rotor
+		UpgradeTypes: airborne
+		UpgradeMinEnabledLevel: 1
+	WithIdleOverlay@ROTOR1GROUND:
+		Offset: 597,0,213
+		Sequence: slow-rotor
+		UpgradeTypes: airborne
+		UpgradeMaxEnabledLevel: 0
+	WithIdleOverlay@ROTOR2AIR:
 		Offset: -597,0,341
 		Sequence: rotor2
-		GroundSequence: slow-rotor2
-	WithSpriteRotorOverlay@SECONDARY:
-		Offset: 597,0,213
+		UpgradeTypes: airborne
+		UpgradeMinEnabledLevel: 1
+	WithIdleOverlay@ROTOR2GROUND:
+		Offset: -597,0,341
+		Sequence: slow-rotor2
+		UpgradeTypes: airborne
+		UpgradeMaxEnabledLevel: 0
 	Cargo:
 		Types: Infantry
 		MaxWeight: 8
@@ -234,11 +256,11 @@ HELI:
 		BuildAtProductionType: Helicopter
 		BuildPaletteOrder: 40
 		Prerequisites: ~hpad, atek, ~techlevel.high
+		Description: Helicopter gunship armed\nwith multi-purpose missiles.\n  Strong vs Tanks, Aircraft\n  Weak vs Infantry
 	Valued:
 		Cost: 2000
 	Tooltip:
 		Name: Longbow
-		Description: Helicopter gunship armed\nwith multi-purpose missiles.\n  Strong vs Tanks, Aircraft\n  Weak vs Infantry
 	Health:
 		HP: 120
 	Armor:
@@ -262,8 +284,16 @@ HELI:
 	AutoTarget:
 		InitialStance: HoldFire
 		InitialStanceAI: HoldFire
-	WithSpriteRotorOverlay:
+	WithIdleOverlay@ROTORAIR:
 		Offset: 0,0,85
+		Sequence: rotor
+		UpgradeTypes: airborne
+		UpgradeMinEnabledLevel: 1
+	WithIdleOverlay@ROTORGROUND:
+		Offset: 0,0,85
+		Sequence: slow-rotor
+		UpgradeTypes: airborne
+		UpgradeMaxEnabledLevel: 0
 	AmmoPool:
 		Ammo: 8
 	SelectionDecorations:
@@ -282,11 +312,11 @@ HIND:
 		BuildAtProductionType: Helicopter
 		BuildPaletteOrder: 20
 		Prerequisites: ~hpad, ~techlevel.medium
+		Description: Helicopter gunship armed\nwith dual chainguns.\n  Strong vs Infantry, Light armor.\n  Weak vs Tanks, Aircraft
 	Valued:
 		Cost: 1350
 	Tooltip:
 		Name: Hind
-		Description: Helicopter gunship armed\nwith dual chainguns.\n  Strong vs Infantry, Light armor.\n  Weak vs Tanks, Aircraft
 	Health:
 		HP: 100
 	Armor:
@@ -313,7 +343,14 @@ HIND:
 	AutoTarget:
 		InitialStance: HoldFire
 		InitialStanceAI: HoldFire
-	WithSpriteRotorOverlay:
+	WithIdleOverlay@ROTORAIR:
+		Sequence: rotor
+		UpgradeTypes: airborne
+		UpgradeMinEnabledLevel: 1
+	WithIdleOverlay@ROTORGROUND:
+		Sequence: slow-rotor
+		UpgradeTypes: airborne
+		UpgradeMaxEnabledLevel: 0
 	AmmoPool:
 		Ammo: 24
 		PipCount: 6
@@ -332,8 +369,8 @@ U2:
 	Inherits: ^Plane
 	Health:
 		HP: 2000
-	EditorOnlyTooltip:
-		Name: U2 Spy Plane
+	Tooltip:
+		Name: Spy Plane
 	Armor:
 		Type: Heavy
 	Aircraft:
@@ -344,6 +381,8 @@ U2:
 		MaximumPitch: 56
 	AttackBomber:
 	-Selectable:
+	SelectionDecorations:
+		RenderSelectionBars: False
 	-Voiced:
 	-Targetable@AIRBORNE:
 	-GainsExperience:

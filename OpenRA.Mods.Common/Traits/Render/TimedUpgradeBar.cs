@@ -12,7 +12,7 @@
 using System.Drawing;
 using OpenRA.Traits;
 
-namespace OpenRA.Mods.Common.Traits
+namespace OpenRA.Mods.Common.Traits.Render
 {
 	[Desc("Visualizes the remaining time for an upgrade.")]
 	class TimedUpgradeBarInfo : ITraitInfo, Requires<UpgradeManagerInfo>
@@ -57,5 +57,6 @@ namespace OpenRA.Mods.Common.Traits
 		}
 
 		Color ISelectionBar.GetColor() { return info.Color; }
+		bool ISelectionBar.DisplayWhenEmpty { get { return false; } }
 	}
 }

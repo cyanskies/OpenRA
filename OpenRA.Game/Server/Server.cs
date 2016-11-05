@@ -35,6 +35,8 @@ namespace OpenRA.Server
 
 	public class Server
 	{
+		public readonly string TwoHumansRequiredText = "This server requires at least two human players to start a match.";
+
 		public readonly IPAddress Ip;
 		public readonly int Port;
 		public readonly MersenneTwister Random = new MersenneTwister();
@@ -137,7 +139,7 @@ namespace OpenRA.Server
 			randomSeed = (int)DateTime.Now.ToBinary();
 
 			if (Settings.AllowPortForward)
-				UPnP.ForwardPort(3600);
+				UPnP.ForwardPort(Settings.ListenPort, Settings.ExternalPort).Wait();
 
 			foreach (var trait in modData.Manifest.ServerTraits)
 				serverTraits.Add(modData.ObjectCreator.CreateObject<ServerTrait>(trait));
@@ -149,8 +151,8 @@ namespace OpenRA.Server
 					RandomSeed = randomSeed,
 					Map = settings.Map,
 					ServerName = settings.Name,
-					Dedicated = dedicated,
-					DisableSingleplayer = settings.DisableSinglePlayer,
+					EnableSingleplayer = settings.EnableSingleplayer || !dedicated,
+					GameUid = Guid.NewGuid().ToString()
 				}
 			};
 
@@ -159,7 +161,7 @@ namespace OpenRA.Server
 				foreach (var t in serverTraits.WithInterface<INotifyServerStart>())
 					t.ServerStarted(this);
 
-				Log.Write("server", "Initial mod: {0}", ModData.Manifest.Mod.Id);
+				Log.Write("server", "Initial mod: {0}", ModData.Manifest.Id);
 				Log.Write("server", "Initial map: {0}", LobbyInfo.GlobalSettings.Map);
 
 				var timeout = serverTraits.WithInterface<ITick>().Min(t => t.TickTimeout);
@@ -184,17 +186,21 @@ namespace OpenRA.Server
 					foreach (var s in checkRead)
 					{
 						if (s == listener.Server)
+						{
 							AcceptConnection();
-						else if (PreConns.Count > 0)
-						{
-							var p = PreConns.SingleOrDefault(c => c.Socket == s);
-							if (p != null) p.ReadData(this);
+							continue;
 						}
-						else if (Conns.Count > 0)
+
+						var preConn = PreConns.SingleOrDefault(c => c.Socket == s);
+						if (preConn != null)
 						{
-							var conn = Conns.SingleOrDefault(c => c.Socket == s);
-							if (conn != null) conn.ReadData(this);
+							preConn.ReadData(this);
+							continue;
 						}
+
+						var conn = Conns.SingleOrDefault(c => c.Socket == s);
+						if (conn != null)
+							conn.ReadData(this);
 					}
 
 					foreach (var t in serverTraits.WithInterface<ITick>())
@@ -203,7 +209,8 @@ namespace OpenRA.Server
 					if (State == ServerState.ShuttingDown)
 					{
 						EndGame();
-						if (Settings.AllowPortForward) UPnP.RemovePortforward();
+						if (Settings.AllowPortForward)
+							UPnP.RemovePortForward().Wait();
 						break;
 					}
 				}
@@ -218,10 +225,6 @@ namespace OpenRA.Server
 			}) { IsBackground = true }.Start();
 		}
 
-		/* lobby rework TODO:
-		 *	- "teams together" option for team games -- will eliminate most need
-		 *		for manual spawnpoint choosing.
-		 */
 		int nextPlayerIndex;
 		public int ChooseFreePlayerIndex()
 		{
@@ -262,8 +265,8 @@ namespace OpenRA.Server
 				// Dispatch a handshake order
 				var request = new HandshakeRequest
 				{
-					Mod = ModData.Manifest.Mod.Id,
-					Version = ModData.Manifest.Mod.Version,
+					Mod = ModData.Manifest.Id,
+					Version = ModData.Manifest.Metadata.Version,
 					Map = LobbyInfo.GlobalSettings.Map
 				};
 
@@ -327,7 +330,7 @@ namespace OpenRA.Server
 				else
 					client.Color = HSLColor.FromRGB(255, 255, 255);
 
-				if (ModData.Manifest.Mod.Id != handshake.Mod)
+				if (ModData.Manifest.Id != handshake.Mod)
 				{
 					Log.Write("server", "Rejected connection from {0}; mods do not match.",
 						newConn.Socket.RemoteEndPoint);
@@ -337,7 +340,7 @@ namespace OpenRA.Server
 					return;
 				}
 
-				if (ModData.Manifest.Mod.Version != handshake.Version && !LobbyInfo.GlobalSettings.AllowVersionMismatch)
+				if (ModData.Manifest.Metadata.Version != handshake.Version && !LobbyInfo.GlobalSettings.AllowVersionMismatch)
 				{
 					Log.Write("server", "Rejected connection from {0}; Not running the same version.",
 						newConn.Socket.RemoteEndPoint);
@@ -395,16 +398,14 @@ namespace OpenRA.Server
 				if (!LobbyInfo.IsSinglePlayer && Map.DefinesUnsafeCustomRules)
 					SendOrderTo(newConn, "Message", "This map contains custom rules. Game experience may change.");
 
-				if (Settings.DisableSinglePlayer)
-					SendOrderTo(newConn, "Message", "Singleplayer games have been disabled on this server.");
+				if (!LobbyInfo.GlobalSettings.EnableSingleplayer)
+					SendOrderTo(newConn, "Message", TwoHumansRequiredText);
 				else if (Map.Players.Players.Where(p => p.Value.Playable).All(p => !p.Value.AllowBots))
 					SendOrderTo(newConn, "Message", "Bots have been disabled on this map.");
 
 				if (handshake.Mod == "{DEV_VERSION}")
 					SendMessage("{0} is running an unversioned development build, ".F(client.Name) +
 						"and may desynchronize the game state if they have incompatible rules.");
-
-				SetOrderLag();
 			}
 			catch (Exception ex)
 			{
@@ -412,24 +413,6 @@ namespace OpenRA.Server
 				Log.Write("server", ex.ToString());
 				DropClient(newConn);
 			}
-		}
-
-		void SetOrderLag()
-		{
-			int latency = 1;
-			if (!LobbyInfo.IsSinglePlayer)
-			{
-				var gameSpeeds = ModData.Manifest.Get<GameSpeeds>();
-				GameSpeed speed;
-				if (gameSpeeds.Speeds.TryGetValue(LobbyInfo.GlobalSettings.GameSpeedType, out speed))
-					latency = speed.OrderLatency;
-				else
-					latency = 3;
-			}
-
-			LobbyInfo.GlobalSettings.OrderLatency = latency;
-
-			SyncLobbyGlobalSettings();
 		}
 
 		void DispatchOrdersToClient(Connection c, int client, int frame, byte[] data)
@@ -523,8 +506,8 @@ namespace OpenRA.Server
 					break;
 				case "Pong":
 					{
-						int pingSent;
-						if (!OpenRA.Exts.TryParseIntegerInvariant(so.Data, out pingSent))
+						long pingSent;
+						if (!OpenRA.Exts.TryParseInt64Invariant(so.Data, out pingSent))
 						{
 							Log.Write("server", "Invalid order pong payload: {0}", so.Data);
 							break;
@@ -585,6 +568,7 @@ namespace OpenRA.Server
 				DispatchOrdersToClients(toDrop, 0, new ServerOrder("Disconnected", "").Serialize());
 
 				LobbyInfo.Clients.RemoveAll(c => c.Index == toDrop.PlayerIndex);
+				LobbyInfo.ClientPings.RemoveAll(p => p.Index == toDrop.PlayerIndex);
 
 				// Client was the server admin
 				// TODO: Reassign admin for game in progress via an order
@@ -620,8 +604,6 @@ namespace OpenRA.Server
 				toDrop.Socket.Disconnect(false);
 			}
 			catch { }
-
-			SetOrderLag();
 		}
 
 		public void SyncLobbyInfo()
@@ -701,6 +683,10 @@ namespace OpenRA.Server
 				SendOrderTo(c, "ServerError", "You have been kicked from the server!");
 				DropClient(c);
 			}
+
+			// HACK: Turn down the latency if there is only one real player
+			if (LobbyInfo.IsSinglePlayer)
+				LobbyInfo.GlobalSettings.OrderLatency = 1;
 
 			SyncLobbyInfo();
 			State = ServerState.GameStarted;

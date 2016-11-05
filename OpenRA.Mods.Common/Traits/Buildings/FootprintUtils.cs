@@ -17,7 +17,7 @@ namespace OpenRA.Mods.Common.Traits
 {
 	public static class FootprintUtils
 	{
-		public static IEnumerable<CPos> Tiles(Ruleset rules, string name, BuildingInfo buildingInfo, CPos topLeft)
+		public static IEnumerable<CPos> Tiles(Ruleset rules, string name, BuildingInfo buildingInfo, CPos topLeft, bool includePassable = false)
 		{
 			var dim = buildingInfo.Dimensions;
 
@@ -30,7 +30,7 @@ namespace OpenRA.Mods.Common.Traits
 				footprint = footprint.Concat(new char[dim.X]);
 			}
 
-			return TilesWhere(name, dim, footprint.ToArray(), a => a != '_').Select(t => t + topLeft);
+			return TilesWhere(name, dim, footprint.ToArray(), a => includePassable || a != '_').Select(t => t + topLeft);
 		}
 
 		public static IEnumerable<CPos> Tiles(Actor a)
@@ -38,10 +38,22 @@ namespace OpenRA.Mods.Common.Traits
 			return Tiles(a.World.Map.Rules, a.Info.Name, a.Info.TraitInfo<BuildingInfo>(), a.Location);
 		}
 
+		public static IEnumerable<CPos> FrozenUnderFogTiles(Actor a)
+		{
+			return Tiles(a.World.Map.Rules, a.Info.Name, a.Info.TraitInfo<BuildingInfo>(), a.Location, true);
+		}
+
 		public static IEnumerable<CPos> UnpathableTiles(string name, BuildingInfo buildingInfo, CPos position)
 		{
 			var footprint = buildingInfo.Footprint.Where(x => !char.IsWhiteSpace(x)).ToArray();
 			foreach (var tile in TilesWhere(name, buildingInfo.Dimensions, footprint, a => a == 'x'))
+				yield return tile + position;
+		}
+
+		public static IEnumerable<CPos> PathableTiles(string name, BuildingInfo buildingInfo, CPos position)
+		{
+			var footprint = buildingInfo.Footprint.Where(x => !char.IsWhiteSpace(x)).ToArray();
+			foreach (var tile in TilesWhere(name, buildingInfo.Dimensions, footprint, a => a == '_'))
 				yield return tile + position;
 		}
 

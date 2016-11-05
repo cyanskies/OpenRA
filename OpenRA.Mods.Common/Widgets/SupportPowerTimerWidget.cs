@@ -9,11 +9,14 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using OpenRA.Graphics;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Primitives;
+using OpenRA.Traits;
 using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Widgets
@@ -26,6 +29,7 @@ namespace OpenRA.Mods.Common.Widgets
 
 		readonly int timestep;
 		readonly IEnumerable<SupportPowerInstance> powers;
+		readonly Color bgDark, bgLight;
 		Pair<string, Color>[] texts;
 
 		[ObjectCreator.UseCtor]
@@ -34,22 +38,27 @@ namespace OpenRA.Mods.Common.Widgets
 			powers = world.ActorsWithTrait<SupportPowerManager>()
 				.Where(p => !p.Actor.IsDead && !p.Actor.Owner.NonCombatant)
 				.SelectMany(s => s.Trait.Powers.Values)
-				.Where(p => p.Instances.Any() && p.Info.DisplayTimer && !p.Disabled);
+				.Where(p => p.Instances.Any() && p.Info.DisplayTimerStances != Stance.None && !p.Disabled);
 
 			// Timers in replays should be synced to the effective game time, not the playback time.
 			timestep = world.Timestep;
 			if (world.IsReplay)
-			{
-				GameSpeed speed;
-				var gameSpeeds = Game.ModData.Manifest.Get<GameSpeeds>();
-				if (gameSpeeds.Speeds.TryGetValue(world.LobbyInfo.GlobalSettings.GameSpeedType, out speed))
-					timestep = speed.Timestep;
-			}
+				timestep = world.WorldActor.Trait<MapOptions>().GameSpeed.Timestep;
+
+			bgDark = ChromeMetrics.Get<Color>("TextContrastColorDark");
+			bgLight = ChromeMetrics.Get<Color>("TextContrastColorLight");
 		}
 
 		public override void Tick()
 		{
-			texts = powers.Select(p =>
+			var displayedPowers = powers.Where(p =>
+			{
+				var owner = p.Instances[0].Self.Owner;
+				var viewer = owner.World.RenderPlayer ?? owner.World.LocalPlayer;
+				return viewer == null || p.Info.DisplayTimerStances.HasStance(owner.Stances[viewer]);
+			});
+
+			texts = displayedPowers.Select(p =>
 			{
 				var time = WidgetUtils.FormatTime(p.RemainingTime, false, timestep);
 				var text = Format.F(p.Info.Description, time);
@@ -74,7 +83,7 @@ namespace OpenRA.Mods.Common.Widgets
 			foreach (var t in texts)
 			{
 				var font = Game.Renderer.Fonts[Font];
-				font.DrawTextWithContrast(t.First, new float2(Bounds.Location) + new float2(0, y), t.Second, Color.Black, 1);
+				font.DrawTextWithShadow(t.First, new float2(Bounds.Location) + new float2(0, y), t.Second, bgDark, bgLight, 1);
 				y += (font.Measure(t.First).Y + 5) * (int)Order;
 			}
 		}

@@ -4,11 +4,11 @@ E2:
 		Queue: Infantry
 		BuildPaletteOrder: 20
 		Prerequisites: ~gapile
+		Description: Infantry armed with special explosive discs.\n  Strong vs Buildings, Infantry\n  Weak vs Vehicles, Aircraft
 	Valued:
 		Cost: 200
 	Tooltip:
 		Name: Disc Thrower
-		Description: Infantry armed with special explosive discs.\n  Strong vs Buildings, Infantry\n  Weak vs Vehicles, Aircraft
 	Health:
 		HP: 150
 	Mobile:
@@ -20,7 +20,7 @@ E2:
 	AttackFrontal:
 		Voice: Attack
 	WithInfantryBody:
-		AttackSequence: throw
+		DefaultAttackSequence: attack
 	ProducibleWithLevel:
 		Prerequisites: barracks.upgraded
 
@@ -30,15 +30,15 @@ MEDIC:
 		Cost: 600
 	Tooltip:
 		Name: Medic
-		Description: Heals nearby infantry.\n  Unarmed
 	Buildable:
 		Queue: Infantry
 		BuildPaletteOrder: 70
 		Prerequisites: ~gapile
+		Description: Heals nearby infantry.\n  Unarmed
 	Voiced:
 		VoiceSet: Medic
 	RevealsShroud:
-		Range: 6c0		
+		Range: 6c0
 	Mobile:
 		Speed: 56
 	Health:
@@ -53,7 +53,7 @@ MEDIC:
 		OutsideRangeCursor: heal
 	AttackFrontal:
 	WithInfantryBody:
-		AttackSequence: heal
+		DefaultAttackSequence: heal
 	SelfHealing:
 		Delay: 60
 	Passenger:
@@ -65,11 +65,11 @@ JUMPJET:
 		Cost: 600
 	Tooltip:
 		Name: Jumpjet Infantry
-		Description: Airborne soldier.\n  Strong vs Infantry, Aircraft\n  Weak vs Vehicles
 	Buildable:
 		Queue: Infantry
 		BuildPaletteOrder: 40
 		Prerequisites: ~gapile, garadr
+		Description: Airborne soldier.\n  Strong vs Infantry, Aircraft\n  Weak vs Vehicles
 	Voiced:
 		VoiceSet: JumpJet
 	Mobile:
@@ -88,23 +88,24 @@ JUMPJET:
 	AttackFrontal:
 		Voice: Attack
 	WithInfantryBody:
-		AttackSequence: shoot
+		DefaultAttackSequence: attack
 	-TakeCover:
 	ProducibleWithLevel:
 		Prerequisites: barracks.upgraded
 
 GHOST:
 	Inherits: ^Soldier
+	Inherits@2: ^HealsOnTiberium
 	Valued:
 		Cost: 1750
 	Tooltip:
 		Name: Ghost Stalker
-		Description: Elite commando infantry, armed with\na railgun and C4.\n  Strong vs Infantry, Buildings\n  Weak vs Vehicles, Aircraft\n  Special Ability: Destroy Building with C4\nMaximum 1 can be trained.
 	Buildable:
 		Queue: Infantry
 		BuildPaletteOrder: 50
 		Prerequisites: ~gapile, gatech
 		BuildLimit: 1
+		Description: Elite commando infantry, armed with\na railgun and C4.\n  Strong vs Infantry, Buildings\n  Weak vs Vehicles, Aircraft\n  Special Ability: Destroy Building with C4\nMaximum 1 can be trained.
 	Voiced:
 		VoiceSet: Ghost
 	Armor:
@@ -113,8 +114,6 @@ GHOST:
 		Speed: 56
 	Health:
 		HP: 200
-	PoisonedByTiberium:
-		Weapon: TiberiumHeal
 	Passenger:
 	RevealsShroud:
 		Range: 6c0
@@ -125,10 +124,10 @@ GHOST:
 		CrushSound: squishy2.aud
 	AttackFrontal:
 		Voice: Attack
-	C4Demolition:
-		C4Delay: 45
+	Demolition:
+		DetonationDelay: 45
 		Voice: Attack
 	WithInfantryBody:
-		AttackSequence: shoot
+		DefaultAttackSequence: attack
 	ProducibleWithLevel:
 		Prerequisites: barracks.upgraded

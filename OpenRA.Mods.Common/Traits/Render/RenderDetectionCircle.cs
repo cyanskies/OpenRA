@@ -16,7 +16,7 @@ using OpenRA.Graphics;
 using OpenRA.Mods.Common.Graphics;
 using OpenRA.Traits;
 
-namespace OpenRA.Mods.Common.Traits
+namespace OpenRA.Mods.Common.Traits.Render
 {
 	class RenderDetectionCircleInfo : ITraitInfo, Requires<DetectCloakedInfo>
 	{
@@ -35,19 +35,17 @@ namespace OpenRA.Mods.Common.Traits
 		public object Create(ActorInitializer init) { return new RenderDetectionCircle(init.Self, this); }
 	}
 
-	class RenderDetectionCircle : ITick, IPostRenderSelection
+	class RenderDetectionCircle : ITick, IRenderAboveShroudWhenSelected
 	{
 		readonly RenderDetectionCircleInfo info;
-		readonly Actor self;
 		WAngle lineAngle;
 
 		public RenderDetectionCircle(Actor self, RenderDetectionCircleInfo info)
 		{
 			this.info = info;
-			this.self = self;
 		}
 
-		public IEnumerable<IRenderable> RenderAfterWorld(WorldRenderer wr)
+		IEnumerable<IRenderable> IRenderAboveShroudWhenSelected.RenderAboveShroud(Actor self, WorldRenderer wr)
 		{
 			if (!self.Owner.IsAlliedWith(self.World.RenderPlayer))
 				yield break;
@@ -71,7 +69,7 @@ namespace OpenRA.Mods.Common.Traits
 				info.ContrastColor);
 		}
 
-		public void Tick(Actor self)
+		void ITick.Tick(Actor self)
 		{
 			lineAngle += info.UpdateLineTick;
 		}

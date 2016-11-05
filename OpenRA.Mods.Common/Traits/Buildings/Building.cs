@@ -13,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Graphics;
+using OpenRA.Mods.Common.Traits.Render;
 using OpenRA.Primitives;
 using OpenRA.Traits;
 
@@ -33,6 +34,12 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly CVec Dimensions = new CVec(1, 1);
 		public readonly bool RequiresBaseProvider = false;
 		public readonly bool AllowInvalidPlacement = false;
+		[Desc("Clear smudges from underneath the building footprint.")]
+		public readonly bool RemoveSmudgesOnBuild = true;
+		[Desc("Clear smudges from underneath the building footprint on sell.")]
+		public readonly bool RemoveSmudgesOnSell = true;
+		[Desc("Clear smudges from underneath the building footprint on transform.")]
+		public readonly bool RemoveSmudgesOnTransform = true;
 
 		public readonly string[] BuildSounds = { "placbldg.aud", "build5.aud" };
 		public readonly string[] UndeploySounds = { "cashturn.aud" };
@@ -42,9 +49,11 @@ namespace OpenRA.Mods.Common.Traits
 		public Actor FindBaseProvider(World world, Player p, CPos topLeft)
 		{
 			var center = world.Map.CenterOfCell(topLeft) + FootprintUtils.CenterOffset(world, this);
+			var allyBuildEnabled = world.WorldActor.Trait<MapBuildRadius>().AllyBuildRadiusEnabled;
+
 			foreach (var bp in world.ActorsWithTrait<BaseProvider>())
 			{
-				var validOwner = bp.Actor.Owner == p || (world.LobbyInfo.GlobalSettings.AllyBuildRadius && bp.Actor.Owner.Stances[p] == Stance.Ally);
+				var validOwner = bp.Actor.Owner == p || (allyBuildEnabled && bp.Actor.Owner.Stances[p] == Stance.Ally);
 				if (!validOwner || !bp.Trait.Ready())
 					continue;
 
@@ -75,7 +84,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			var nearnessCandidates = new List<CPos>();
 			var bi = world.WorldActor.Trait<BuildingInfluence>();
-			var allyBuildRadius = world.LobbyInfo.GlobalSettings.AllyBuildRadius;
+			var allyBuildEnabled = world.WorldActor.Trait<MapBuildRadius>().AllyBuildRadiusEnabled;
 
 			for (var y = scanStart.Y; y < scanEnd.Y; y++)
 			{
@@ -88,14 +97,14 @@ namespace OpenRA.Mods.Common.Traits
 					if (buildingAtPos == null)
 					{
 						var unitsAtPos = world.ActorMap.GetActorsAt(pos).Where(a => a.IsInWorld
-							&& (a.Owner == p || (allyBuildRadius && a.Owner.Stances[p] == Stance.Ally))
+							&& (a.Owner == p || (allyBuildEnabled && a.Owner.Stances[p] == Stance.Ally))
 							&& a.Info.HasTraitInfo<GivesBuildableAreaInfo>());
 
 						if (unitsAtPos.Any())
 							nearnessCandidates.Add(pos);
 					}
 					else if (buildingAtPos.IsInWorld && buildingAtPos.Info.HasTraitInfo<GivesBuildableAreaInfo>()
-						&& (buildingAtPos.Owner == p || (allyBuildRadius && buildingAtPos.Owner.Stances[p] == Stance.Ally)))
+						&& (buildingAtPos.Owner == p || (allyBuildEnabled && buildingAtPos.Owner.Stances[p] == Stance.Ally)))
 						nearnessCandidates.Add(pos);
 				}
 			}
@@ -120,11 +129,9 @@ namespace OpenRA.Mods.Common.Traits
 		public IEnumerable<IRenderable> Render(WorldRenderer wr, World w, ActorInfo ai, WPos centerPosition)
 		{
 			if (!RequiresBaseProvider)
-				yield break;
+				return SpriteRenderable.None;
 
-			foreach (var a in w.ActorsWithTrait<BaseProvider>())
-				foreach (var r in a.Trait.RenderAfterWorld(wr))
-					yield return r;
+			return w.ActorsWithTrait<BaseProvider>().SelectMany(a => a.Trait.RangeCircleRenderables(wr));
 		}
 	}
 
@@ -136,7 +143,7 @@ namespace OpenRA.Mods.Common.Traits
 		readonly Actor self;
 		public readonly bool SkipMakeAnimation;
 
-		/* shared activity lock: undeploy, sell, capture, etc */
+		// Shared activity lock: undeploy, sell, capture, etc.
 		[Sync] public bool Locked = true;
 
 		public bool Lock()
@@ -174,7 +181,7 @@ namespace OpenRA.Mods.Common.Traits
 			return OccupiedCells().Select(c => self.World.Map.CenterOfCell(c.First));
 		}
 
-		public void Created(Actor self)
+		void INotifyCreated.Created(Actor self)
 		{
 			if (SkipMakeAnimation || !self.Info.HasTraitInfo<WithMakeAnimationInfo>())
 				NotifyBuildingComplete(self);
@@ -182,6 +189,9 @@ namespace OpenRA.Mods.Common.Traits
 
 		public virtual void AddedToWorld(Actor self)
 		{
+			if (Info.RemoveSmudgesOnBuild)
+				RemoveSmudges();
+
 			self.World.ActorMap.AddInfluence(self, this);
 			self.World.ActorMap.AddPosition(self, this);
 
@@ -189,7 +199,7 @@ namespace OpenRA.Mods.Common.Traits
 				self.World.ScreenMap.Add(self);
 		}
 
-		public void RemovedFromWorld(Actor self)
+		void INotifyRemovedFromWorld.RemovedFromWorld(Actor self)
 		{
 			self.World.ActorMap.RemoveInfluence(self, this);
 			self.World.ActorMap.RemovePosition(self, this);
@@ -210,20 +220,35 @@ namespace OpenRA.Mods.Common.Traits
 				notify.BuildingComplete(self);
 		}
 
-		public void Selling(Actor self)
+		void INotifySold.Selling(Actor self)
 		{
+			if (Info.RemoveSmudgesOnSell)
+				RemoveSmudges();
+
 			BuildComplete = false;
 		}
 
-		public void Sold(Actor self) { }
+		void INotifySold.Sold(Actor self) { }
 
-		public void BeforeTransform(Actor self)
+		void INotifyTransform.BeforeTransform(Actor self)
 		{
+			if (Info.RemoveSmudgesOnTransform)
+				RemoveSmudges();
+
 			foreach (var s in Info.UndeploySounds)
 				Game.Sound.PlayToPlayer(self.Owner, s, self.CenterPosition);
 		}
 
-		public void OnTransform(Actor self) { }
-		public void AfterTransform(Actor self) { }
+		void INotifyTransform.OnTransform(Actor self) { }
+		void INotifyTransform.AfterTransform(Actor self) { }
+
+		public void RemoveSmudges()
+		{
+			var smudgeLayers = self.World.WorldActor.TraitsImplementing<SmudgeLayer>();
+
+			foreach (var smudgeLayer in smudgeLayers)
+				foreach (var footprintTile in FootprintUtils.Tiles(self))
+					smudgeLayer.RemoveSmudge(footprintTile);
+		}
 	}
 }

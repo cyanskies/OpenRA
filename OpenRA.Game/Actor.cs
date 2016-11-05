@@ -38,7 +38,7 @@ namespace OpenRA
 
 		public readonly uint ActorID;
 
-		public Player Owner { get; set; }
+		public Player Owner { get; internal set; }
 
 		public bool IsInWorld { get; internal set; }
 		public bool Disposed { get; private set; }
@@ -301,11 +301,11 @@ namespace OpenRA
 				Owner = newOwner;
 				Generation++;
 
-				if (wasInWorld)
-					w.Add(this);
-
 				foreach (var t in TraitsImplementing<INotifyOwnerChanged>())
 					t.OnOwnerChanged(this, oldOwner, newOwner);
+
+				if (wasInWorld)
+					w.Add(this);
 			});
 		}
 
@@ -317,12 +317,12 @@ namespace OpenRA
 			return (health == null) ? DamageState.Undamaged : health.DamageState;
 		}
 
-		public void InflictDamage(Actor attacker, int damage, IWarhead warhead)
+		public void InflictDamage(Actor attacker, Damage damage)
 		{
 			if (Disposed || health == null)
 				return;
 
-			health.InflictDamage(this, attacker, damage, warhead, false);
+			health.InflictDamage(this, attacker, damage, false);
 		}
 
 		public void Kill(Actor attacker)

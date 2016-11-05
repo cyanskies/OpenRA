@@ -2,9 +2,9 @@
 	AppearsOnRadar:
 	CombatDebugOverlay:
 	GivesExperience:
+		PlayerExperienceModifier: 1
 	ScriptTriggers:
 	UpgradeManager:
-	Huntable:
 	RenderDebugState:
 
 ^SpriteActor:
@@ -38,7 +38,7 @@
 	SelfHealing@ELITE:
 		Step: 2
 		Delay: 100
-		HealIfBelow: 1
+		HealIfBelow: 100
 		DamageCooldown: 125
 		UpgradeTypes: selfheal
 		UpgradeMinEnabledLevel: 1
@@ -67,6 +67,7 @@
 	Inherits@2: ^GainsExperience
 	Inherits@3: ^IronCurtainable
 	Inherits@4: ^SpriteActor
+	Huntable:
 	DrawLineToTarget:
 	UpdatesPlayerStatistics:
 	Mobile:
@@ -81,6 +82,7 @@
 			Beach: 40
 		TurnSpeed: 5
 	SelectionDecorations:
+	WithSpriteControlGroupDecoration:
 	Selectable:
 		Bounds: 24, 24
 	Targetable:
@@ -99,7 +101,7 @@
 	GivesBounty:
 	GpsDot:
 		String: Vehicle
-	WithSmoke:
+	WithDamageOverlay:
 	Guard:
 	Guardable:
 	Tooltip:
@@ -165,6 +167,7 @@
 	Inherits@1: ^ExistsInWorld
 	Inherits@2: ^GainsExperience
 	Inherits@3: ^SpriteActor
+	Huntable:
 	DrawLineToTarget:
 	Health:
 		HP: 25
@@ -187,6 +190,7 @@
 			Gems: 80
 			Beach: 80
 	SelectionDecorations:
+	WithSpriteControlGroupDecoration:
 	Selectable:
 		Bounds: 12,18,0,-8
 	Targetable:
@@ -222,7 +226,7 @@
 	SelfHealing@HOSPITAL:
 		Step: 5
 		Delay: 100
-		HealIfBelow: 1
+		HealIfBelow: 100
 		DamageCooldown: 125
 		UpgradeTypes: hospitalheal
 		UpgradeMinEnabledLevel: 1
@@ -290,19 +294,23 @@
 	ScaredyCat:
 	Voiced:
 		VoiceSet: CivilianMaleVoice
+	Wanders:
+		MinMoveDelay: 150
+		MaxMoveDelay: 750
 
 ^ArmedCivilian:
 	Armament:
 		Weapon: Pistol
 	AttackFrontal:
 	WithInfantryBody:
-		AttackSequence: shoot
+		DefaultAttackSequence: shoot
 
 ^Ship:
 	Inherits@1: ^ExistsInWorld
 	Inherits@2: ^GainsExperience
 	Inherits@3: ^IronCurtainable
 	Inherits@4: ^SpriteActor
+	Huntable:
 	DrawLineToTarget:
 	UpdatesPlayerStatistics:
 	Mobile:
@@ -310,6 +318,7 @@
 		TerrainSpeeds:
 			Water: 100
 	SelectionDecorations:
+	WithSpriteControlGroupDecoration:
 	Selectable:
 		Bounds: 24,24
 	Targetable:
@@ -325,7 +334,7 @@
 	RepairableNear:
 	GpsDot:
 		String: Ship
-	WithSmoke:
+	WithDamageOverlay:
 	Explodes:
 		Weapon: UnitExplodeShip
 		EmptyWeapon: UnitExplodeShip
@@ -345,11 +354,13 @@
 	Inherits@2: ^GainsExperience
 	Inherits@3: ^IronCurtainable
 	Inherits@4: ^SpriteActor
+	Huntable:
 	DrawLineToTarget:
 	UpdatesPlayerStatistics:
 	AppearsOnRadar:
 		UseLocation: true
 	SelectionDecorations:
+	WithSpriteControlGroupDecoration:
 	Selectable:
 		Bounds: 24,24
 	Aircraft:
@@ -386,6 +397,8 @@
 	Tooltip:
 		GenericName: Plane
 	WithShadow:
+		Offset: 43, 128, 0
+		ZOffset: -129
 	WithFacingSpriteBody:
 	MustBeDestroyed:
 	Voiced:
@@ -411,6 +424,7 @@
 	Inherits@2: ^IronCurtainable
 	Inherits@3: ^SpriteActor
 	SelectionDecorations:
+	WithSpriteControlGroupDecoration:
 	Selectable:
 		Priority: 3
 	Targetable:
@@ -441,16 +455,18 @@
 
 ^Building:
 	Inherits: ^BasicBuilding
+	Huntable:
 	UpdatesPlayerStatistics:
 	GivesBuildableArea:
 	RepairableBuilding:
+		PlayerExperience: 25
 	EngineerRepairable:
 	AcceptsSupplies:
 	WithMakeAnimation:
 	ExternalCapturable:
 	ExternalCapturableBar:
 	EmitInfantryOnSell:
-		ActorTypes: e1,e1,e1,e1,e1,e1,e1,e1,e1,e1,e1,e1,e1,e1,e1,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,e6,e6,e6,e6,e6
+		ActorTypes: e1,e1,e1,tecn,tecn
 	MustBeDestroyed:
 		RequiredForShortGame: true
 	GpsDot:
@@ -461,7 +477,7 @@
 ^ScienceBuilding:
 	Inherits: ^Building
 	EmitInfantryOnSell:
-		ActorTypes: e1,e1,e1,e1,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,e6,e6,e6,e6,e6,chan,chan,chan,chan
+		ActorTypes: e1,e1,e1,e1,tecn,tecn,tecn,tecn,tecn,tecn,tecn,tecn,tecn,tecn,e6,e6,e6,e6,e6,chan,chan,chan,chan
 
 ^Defense:
 	Inherits: ^Building
@@ -511,8 +527,32 @@
 			TopLeft: -512, -512
 			BottomRight: 512, 512
 
+^Gate:
+	Inherits: ^BasicBuilding
+	Valued:
+		Cost: 250
+	Health:
+		HP: 350
+	Armor:
+		Type: Heavy
+	LineBuildNode:
+		Types: concrete, gate
+	-Building:
+	-WithSpriteBody:
+	WithGateSpriteBody:
+	Tooltip:
+		Name: Gate
+	Gate:
+		Adjacent: 4
+		BlocksProjectilesHeight: 0
+		BuildSounds: place2.aud
+		OpeningSound: cashturn.aud
+		ClosingSound: cashturn.aud
+		TerrainTypes: Clear, Road
+
 ^TechBuilding:
 	Inherits: ^BasicBuilding
+	Huntable:
 	Health:
 		HP: 400
 	Armor:
@@ -521,7 +561,6 @@
 		Name: Civilian Building
 		GenericVisibility: None
 	FrozenUnderFog:
-		StartsRevealed: true
 
 ^FakeBuilding:
 	Inherits: ^Building
@@ -542,9 +581,21 @@
 	-EmitInfantryOnSell:
 	-MustBeDestroyed:
 
+^InfiltratableFake:
+	Targetable:
+		TargetTypes: Ground, Structure, C4, DetonateAttack, SpyInfiltrate
+	InfiltrateForDecoration:
+		RequiresSelection: true
+		Image: pips
+		Sequence: tag-fake
+		ReferencePoint: Top
+		ZOffset: 256
+
 ^AmmoBox:
 	Inherits: ^TechBuilding
 	-Selectable:
+	SelectionDecorations:
+		RenderSelectionBars: False
 	CustomSelectionSize:
 		CustomBounds: 24,24
 	Health:
@@ -569,6 +620,7 @@
 ^CivField:
 	Inherits: ^CivBuilding
 	-Selectable:
+	-SelectionDecorations:
 	Tooltip:
 		Name: Field
 	-Targetable:
@@ -580,6 +632,7 @@
 	Inherits@1: ^SpriteActor
 	Tooltip:
 		Name: Tree
+		ShowOwnerRow: false
 	RenderSprites:
 		Palette: terrain
 	WithSpriteBody:
@@ -593,11 +646,41 @@
 		HP: 500
 	Armor:
 		Type: Wood
+	Targetable:
+		TargetTypes: Trees
+	WithDamageOverlay@SmallBurn:
+		DamageType: Incendiary
+		Image: burn-s
+		MinimumDamageState: Light
+		MaximumDamageState: Medium
+	WithDamageOverlay@MediumBurn:
+		DamageType: Incendiary
+		Image: burn-m
+		MinimumDamageState: Medium
+		MaximumDamageState: Heavy
+	WithDamageOverlay@LargeBurn:
+		DamageType: Incendiary
+		Image: burn-l
+		MinimumDamageState: Heavy
+		MaximumDamageState: Dead
 	AutoTargetIgnore:
 	HiddenUnderShroud:
 	ScriptTriggers:
 	EditorTilesetFilter:
 		ExcludeTilesets: INTERIOR
+
+^TreeHusk:
+	Inherits@1: ^SpriteActor
+	AppearsOnRadar:
+	Building:
+		Footprint: x
+		Dimensions: 1,1
+	WithSpriteBody:
+	Tooltip:
+		Name: Tree (Burnt)
+		ShowOwnerRow: false
+	FrozenUnderFog:
+	ScriptTriggers:
 
 ^BasicHusk:
 	Inherits@1: ^SpriteActor
@@ -636,6 +719,8 @@
 ^PlaneHusk:
 	Inherits: ^BasicHusk
 	WithShadow:
+		Offset: 43, 128, 0
+		ZOffset: -129
 	Tooltip:
 		GenericName: Destroyed Plane
 	Aircraft:
@@ -649,6 +734,8 @@
 ^HelicopterHusk:
 	Inherits: ^BasicHusk
 	WithShadow:
+		Offset: 43, 128, 0
+		ZOffset: -129
 	Tooltip:
 		GenericName: Destroyed Helicopter
 	Aircraft:
@@ -663,6 +750,7 @@
 	AlwaysVisible:
 	Tooltip:
 		Name: Bridge
+		ShowOwnerRow: false
 	Targetable:
 		TargetTypes: Ground, Water
 		RequiresForceFire: true
@@ -682,6 +770,7 @@
 	Inherits@1: ^SpriteActor
 	Tooltip:
 		Name: Rock
+		ShowOwnerRow: false
 	RenderSprites:
 		Palette: terrain
 	WithSpriteBody:
@@ -709,6 +798,7 @@
 	Tooltip:
 		Name: Crate
 		GenericName: Crate
+		ShowOwnerRow: false
 	Crate:
 		Lifetime: 180
 		TerrainTypes: Clear, Rough, Road, Ore, Beach
@@ -736,8 +826,7 @@
 ^Mine:
 	Inherits: ^SpriteActor
 	WithSpriteBody:
-	HiddenUnderShroud:
-		Type: CenterPosition
+	HiddenUnderFog:
 	Mine:
 		CrushClasses: mine
 		DetonateClasses: mine
@@ -752,6 +841,7 @@
 		UncloakSound:
 		Palette:
 		CloakTypes: Mine
+		InitialDelay: 0
 	Tooltip:
 		Name: Mine
 	Targetable:

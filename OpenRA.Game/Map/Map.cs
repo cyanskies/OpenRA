@@ -16,12 +16,8 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Security.Cryptography;
 using System.Text;
 using OpenRA.FileSystem;
-using OpenRA.Graphics;
-using OpenRA.Network;
-using OpenRA.Primitives;
 using OpenRA.Support;
 using OpenRA.Traits;
 
@@ -264,8 +260,7 @@ namespace OpenRA
 
 				// Take the SHA1
 				ms.Seek(0, SeekOrigin.Begin);
-				using (var csp = SHA1.Create())
-					return new string(csp.ComputeHash(ms).SelectMany(a => a.ToString("x2")).ToArray());
+				return CryptoUtil.SHA1Hash(ms);
 			}
 		}
 
@@ -310,7 +305,7 @@ namespace OpenRA
 			Package = package;
 
 			if (!Package.Contains("map.yaml") || !Package.Contains("map.bin"))
-				throw new InvalidDataException("Not a valid map\n File: {1}".F(package.Name));
+				throw new InvalidDataException("Not a valid map\n File: {0}".F(package.Name));
 
 			var yaml = new MiniYaml(null, MiniYaml.FromStream(Package.GetStream("map.yaml"), package.Name));
 			foreach (var field in YamlFields)

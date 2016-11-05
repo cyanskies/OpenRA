@@ -24,10 +24,6 @@ Players:
 		OwnsWorld: True
 		NonCombatant: True
 		Faction: england
-	PlayerReference@Creeps:
-		Name: Creeps
-		NonCombatant: True
-		Faction: england
 	PlayerReference@Greece:
 		Name: Greece
 		Faction: allies
@@ -217,7 +213,7 @@ Actors:
 		Location: 78,61
 		Owner: Neutral
 	Actor54: agun
-		Location: 73,45
+		Location: 73,46
 		Owner: Greece
 	Actor55: gun
 		Location: 69,49
@@ -265,7 +261,7 @@ Actors:
 		Owner: Greece
 		Facing: 160
 	Actor69: agun
-		Location: 68,46
+		Location: 68,47
 		Owner: Greece
 	Actor70: proc
 		Location: 63,42
@@ -600,4 +596,4 @@ Actors:
 		Location: 21,80
 		Owner: Neutral
 
-Rules: rules.yaml
+Rules: ra|rules/campaign-rules.yaml, ra|rules/campaign-tooltips.yaml, rules.yaml

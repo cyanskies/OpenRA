@@ -140,18 +140,20 @@ namespace OpenRA.Mods.Common.Traits
 		public void AddSmudge(CPos loc)
 		{
 			if (Game.CosmeticRandom.Next(0, 100) <= Info.SmokePercentage)
-				world.AddFrameEndTask(w => w.Add(new Smoke(w, world.Map.CenterOfCell(loc), Info.SmokeType, Info.SmokePalette, Info.SmokeSequence)));
+				world.AddFrameEndTask(w => w.Add(new SpriteEffect(world.Map.CenterOfCell(loc), w, Info.SmokeType, Info.SmokeSequence, Info.SmokePalette)));
 
-			if (!dirty.ContainsKey(loc) && !tiles.ContainsKey(loc))
+			// A null Sprite indicates a deleted smudge.
+			if ((!dirty.ContainsKey(loc) || dirty[loc].Sprite == null) && !tiles.ContainsKey(loc))
 			{
 				// No smudge; create a new one
-				var st = smudges.Keys.Random(world.SharedRandom);
+				var st = smudges.Keys.Random(Game.CosmeticRandom);
 				dirty[loc] = new Smudge { Type = st, Depth = 0, Sprite = smudges[st][0] };
 			}
 			else
 			{
 				// Existing smudge; make it deeper
-				var tile = dirty.ContainsKey(loc) ? dirty[loc] : tiles[loc];
+				// A null Sprite indicates a deleted smudge.
+				var tile = dirty.ContainsKey(loc) && dirty[loc].Sprite != null ? dirty[loc] : tiles[loc];
 				var maxDepth = smudges[tile.Type].Length;
 				if (tile.Depth < maxDepth - 1)
 				{
@@ -163,6 +165,15 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
+		public void RemoveSmudge(CPos loc)
+		{
+			var tile = dirty.ContainsKey(loc) ? dirty[loc] : new Smudge();
+
+			// Setting Sprite to null to indicate a deleted smudge.
+			tile.Sprite = null;
+			dirty[loc] = tile;
+		}
+
 		public void TickRender(WorldRenderer wr, Actor self)
 		{
 			var remove = new List<CPos>();
@@ -170,7 +181,11 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				if (!self.World.FogObscures(kv.Key))
 				{
-					tiles[kv.Key] = kv.Value;
+					// A null Sprite indicates a deleted smudge.
+					if (kv.Value.Sprite == null)
+						tiles.Remove(kv.Key);
+					else
+						tiles[kv.Key] = kv.Value;
 					render.Update(kv.Key, kv.Value.Sprite);
 
 					remove.Add(kv.Key);

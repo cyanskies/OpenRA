@@ -27,8 +27,12 @@ namespace OpenRA.Mods.Cnc.Traits
 		[Desc("Amount of time to keep the camera alive")]
 		public readonly int CameraRemoveDelay = 25;
 
-		[Desc("Effect sequence to display")]
+		[Desc("Effect sequence sprite image")]
 		public readonly string Effect = "ionsfx";
+
+		[Desc("Effect sequence to display")]
+		[SequenceReference("Effect")] public readonly string EffectSequence = "idle";
+
 		[PaletteReference] public readonly string EffectPalette = "effect";
 
 		[Desc("Which weapon to fire"), WeaponReference]
@@ -38,6 +42,9 @@ namespace OpenRA.Mods.Cnc.Traits
 
 		[Desc("Apply the weapon impact this many ticks into the effect")]
 		public readonly int WeaponDelay = 7;
+
+		[Desc("Sound to instantly play at the targeted area.")]
+		public readonly string OnFireSound = null;
 
 		public override object Create(ActorInitializer init) { return new IonCannonPower(init.Self, this); }
 		public void RulesetLoaded(Ruleset rules, ActorInfo ai) { WeaponInfo = rules.Weapons[Weapon.ToLowerInvariant()]; }
@@ -59,8 +66,10 @@ namespace OpenRA.Mods.Cnc.Traits
 
 			self.World.AddFrameEndTask(w =>
 			{
-				Game.Sound.Play(Info.LaunchSound, self.World.Map.CenterOfCell(order.TargetLocation));
-				w.Add(new IonCannon(self.Owner, info.WeaponInfo, w, order.TargetLocation, info.Effect, info.EffectPalette, info.WeaponDelay));
+				PlayLaunchSounds();
+				Game.Sound.Play(info.OnFireSound, self.World.Map.CenterOfCell(order.TargetLocation));
+				w.Add(new IonCannon(self.Owner, info.WeaponInfo, w, self.CenterPosition, order.TargetLocation,
+					info.Effect, info.EffectSequence, info.EffectPalette, info.WeaponDelay));
 
 				if (info.CameraActor == null)
 					return;

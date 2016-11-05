@@ -49,24 +49,21 @@ fi
 
 if [ ! -f MaxMind.GeoIP2.dll ]; then
 	echo "Fetching MaxMind.GeoIP2 from NuGet"
-	get Newtonsoft.Json 7.0.1
-	get MaxMind.Db 1.1.0.0
-	get RestSharp 105.2.3
-	get MaxMind.GeoIP2 2.3.1
-	cp ./MaxMind.Db/lib/net40/MaxMind.Db.* .
+	get Newtonsoft.Json 8.0.3
+	get MaxMind.Db 2.0.0
+	get MaxMind.GeoIP2 2.6.0
+	cp ./MaxMind.Db/lib/net45/MaxMind.Db.* .
 	rm -rf MaxMind.Db
-	cp ./MaxMind.GeoIP2/lib/net40/MaxMind.GeoIP2* .
+	cp ./MaxMind.GeoIP2/lib/net45/MaxMind.GeoIP2* .
 	rm -rf MaxMind.GeoIP2
-	cp ./Newtonsoft.Json/lib/net40/Newtonsoft.Json* .
+	cp ./Newtonsoft.Json/lib/net45/Newtonsoft.Json* .
 	rm -rf Newtonsoft.Json
-	cp ./RestSharp/lib/net4-client/RestSharp* .
-	rm -rf RestSharp
 fi
 
 if [ ! -f SharpFont.dll ]; then
 	echo "Fetching SharpFont from NuGet"
-	get SharpFont 3.1.0
-	cp ./SharpFont/lib/net20/SharpFont* .
+	get SharpFont 4.0.1
+	cp ./SharpFont/lib/net45/SharpFont* .
 	cp ./SharpFont/config/SharpFont.dll.config .
 	rm -rf SharpFont SharpFont.Dependencies
 fi
@@ -86,11 +83,11 @@ if [ ! -f nunit3-console.exe ]; then
 	rm -rf NUnit.Console
 fi
 
-if [ ! -f Mono.Nat.dll ]; then
-	echo "Fetching Mono.Nat from NuGet"
-	get Mono.Nat 1.2.24
-	cp ./Mono.Nat/lib/net40/Mono.Nat.dll .
-	rm -rf Mono.Nat
+if [ ! -f Open.Nat.dll ]; then
+	echo "Fetching Open.Nat from NuGet"
+	get Open.NAT 2.1.0
+	cp ./Open.NAT/lib/net45/Open.Nat.dll .
+	rm -rf Open.NAT
 fi
 
 if [ ! -f FuzzyLogicLibrary.dll ]; then

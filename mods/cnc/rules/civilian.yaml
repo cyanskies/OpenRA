@@ -337,6 +337,7 @@ ARCO:
 		Actor: ARCO.Husk
 	Tooltip:
 		Name: Oil Pump
+		ShowOwnerRow: True
 
 ARCO.Husk:
 	Inherits: ^CivBuildingHusk
@@ -352,7 +353,6 @@ BARB:
 		Type: Light
 	Tooltip:
 		Name: Barbwire Fence
-		Icon: barbicnh
 	LineBuild:
 		NodeTypes: barbwire
 	LineBuildNode:
@@ -366,7 +366,6 @@ WOOD:
 		Type: Wood
 	Tooltip:
 		Name: Wooden Fence
-		Icon: woodicnh
 	LineBuild:
 		NodeTypes: woodfence
 	LineBuildNode:
@@ -455,45 +454,69 @@ BRIDGEHUT:
 
 C1:
 	Inherits: ^CivInfantry
-	Voiced:
-		VoiceSet: CivilianMaleVoice
+	Inherits@armed: ^ArmedCivilian
 
 C2:
 	Inherits: ^CivInfantry
-	Voiced:
-		VoiceSet: CivilianFemaleVoice
+	Inherits@armed: ^ArmedCivilian
 
 C3:
 	Inherits: ^CivInfantry
+	Inherits@armed: ^ArmedCivilian
+	Voiced:
+		VoiceSet: CivilianFemaleVoice
 
 C4:
 	Inherits: ^CivInfantry
+	Inherits@armed: ^ArmedCivilian
 	Voiced:
 		VoiceSet: CivilianFemaleVoice
 
 C5:
 	Inherits: ^CivInfantry
+	Inherits@armed: ^ArmedCivilian
+	Voiced:
+		VoiceSet: CivilianFemaleVoice
 
 C6:
 	Inherits: ^CivInfantry
-	Voiced:
-		VoiceSet: CivilianFemaleVoice
+	Inherits@armed: ^ArmedCivilian
 
 C7:
 	Inherits: ^CivInfantry
+	Inherits@armed: ^ArmedCivilian
 
 C8:
 	Inherits: ^CivInfantry
-	Voiced:
-		VoiceSet: CivilianFemaleVoice
+	Inherits@armed: ^ArmedCivilian
 
 C9:
 	Inherits: ^CivInfantry
+	Inherits@armed: ^ArmedCivilian
 
 C10:
 	Inherits: ^CivInfantry
+	Inherits@armed: ^ArmedCivilian
+
+DELPHI:
+	Inherits: ^CivInfantry
+	Inherits@armed: ^ArmedCivilian
+	-Wanders:
+	Tooltip:
+		Name: Agent Delphi
+
+CHAN:
+	Inherits: ^CivInfantry
+	Tooltip:
+		Name: Dr. Chan
+
+MOEBIUS:
+	Inherits: ^CivInfantry
+	-Wanders:
 	Voiced:
-		VoiceSet: CivilianFemaleVoice
+		VoiceSet: MoebiusVoice
+	Tooltip:
+		Name: Dr. Moebius
 
 VICE:
 	Inherits: ^Viceroid

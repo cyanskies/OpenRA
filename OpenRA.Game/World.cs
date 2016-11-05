@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Effects;
 using OpenRA.FileFormats;
+using OpenRA.GameRules;
 using OpenRA.Graphics;
 using OpenRA.Network;
 using OpenRA.Orders;
@@ -30,6 +31,8 @@ namespace OpenRA
 		internal readonly TraitDictionary TraitDict = new TraitDictionary();
 		readonly SortedDictionary<uint, Actor> actors = new SortedDictionary<uint, Actor>();
 		readonly List<IEffect> effects = new List<IEffect>();
+		readonly List<ISync> syncedEffects = new List<ISync>();
+
 		readonly Queue<Action<World>> frameEndActions = new Queue<Action<World>>();
 
 		public int Timestep;
@@ -83,11 +86,6 @@ namespace OpenRA
 		public bool IsReplay
 		{
 			get { return OrderManager.Connection is ReplayConnection; }
-		}
-
-		public bool AllowDevCommands
-		{
-			get { return LobbyInfo.GlobalSettings.AllowCheats || LobbyInfo.IsSinglePlayer; }
 		}
 
 		void SetLocalPlayer(Player localPlayer)
@@ -178,16 +176,12 @@ namespace OpenRA
 
 			gameInfo = new GameInformation
 			{
-				Mod = Game.ModData.Manifest.Mod.Id,
-				Version = Game.ModData.Manifest.Mod.Version,
+				Mod = Game.ModData.Manifest.Id,
+				Version = Game.ModData.Manifest.Metadata.Version,
 
 				MapUid = Map.Uid,
 				MapTitle = Map.Title
 			};
-
-			if (!LobbyInfo.GlobalSettings.Shroud)
-				foreach (var player in Players)
-					player.Shroud.ExploreAll(this);
 		}
 
 		public void AddToMaps(Actor self, IOccupySpace ios)
@@ -246,6 +240,11 @@ namespace OpenRA
 				rc.Metadata = new ReplayMetadata(gameInfo);
 		}
 
+		public void SetWorldOwner(Player p)
+		{
+			WorldActor.Owner = p;
+		}
+
 		public Actor CreateActor(string name, TypeDictionary initDict)
 		{
 			return CreateActor(true, name, initDict);
@@ -281,9 +280,27 @@ namespace OpenRA
 				t.RemovedFromWorld(a);
 		}
 
-		public void Add(IEffect b) { effects.Add(b); }
-		public void Remove(IEffect b) { effects.Remove(b); }
-		public void RemoveAll(Predicate<IEffect> predicate) { effects.RemoveAll(predicate); }
+		public void Add(IEffect e)
+		{
+			effects.Add(e);
+			var se = e as ISync;
+			if (se != null)
+				syncedEffects.Add(se);
+		}
+
+		public void Remove(IEffect e)
+		{
+			effects.Remove(e);
+			var se = e as ISync;
+			if (se != null)
+				syncedEffects.Remove(se);
+		}
+
+		public void RemoveAll(Predicate<IEffect> predicate)
+		{
+			effects.RemoveAll(predicate);
+			syncedEffects.RemoveAll(e => predicate((IEffect)e));
+		}
 
 		public void AddFrameEndTask(Action<World> a) { frameEndActions.Enqueue(a); }
 
@@ -343,6 +360,7 @@ namespace OpenRA
 
 		public IEnumerable<Actor> Actors { get { return actors.Values; } }
 		public IEnumerable<IEffect> Effects { get { return effects; } }
+		public IEnumerable<ISync> SyncedEffects { get { return syncedEffects; } }
 
 		public Actor GetActorById(uint actorId)
 		{
@@ -365,24 +383,20 @@ namespace OpenRA
 				var n = 0;
 				var ret = 0;
 
-				// hash all the actors
+				// Hash all the actors.
 				foreach (var a in Actors)
 					ret += n++ * (int)(1 + a.ActorID) * Sync.HashActor(a);
 
-				// hash all the traits that tick
+				// Hash fields marked with the ISync interface.
 				foreach (var actor in ActorsHavingTrait<ISync>())
 					foreach (var syncHash in actor.SyncHashes)
 						ret += n++ * (int)(1 + actor.ActorID) * syncHash.Hash;
 
-				// TODO: don't go over all effects
-				foreach (var e in Effects)
-				{
-					var sync = e as ISync;
-					if (sync != null)
-						ret += n++ * Sync.Hash(sync);
-				}
+				// Hash game state relevant effects such as projectiles.
+				foreach (var sync in SyncedEffects)
+					ret += n++ * Sync.Hash(sync);
 
-				// Hash the shared rng
+				// Hash the shared random number generator.
 				ret += SharedRandom.Last;
 
 				return ret;

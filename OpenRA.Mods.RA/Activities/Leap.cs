@@ -14,6 +14,7 @@ using System.Linq;
 using OpenRA.Activities;
 using OpenRA.GameRules;
 using OpenRA.Mods.Common.Traits;
+using OpenRA.Mods.Common.Traits.Render;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.RA.Activities
@@ -29,13 +30,13 @@ namespace OpenRA.Mods.RA.Activities
 		int ticks;
 		WAngle angle;
 
-		public Leap(Actor self, Actor target, WeaponInfo weapon, WDist speed, WAngle angle)
+		public Leap(Actor self, Actor target, Armament a, WDist speed, WAngle angle)
 		{
 			var targetMobile = target.TraitOrDefault<Mobile>();
 			if (targetMobile == null)
 				throw new InvalidOperationException("Leap requires a target actor with the Mobile trait");
 
-			this.weapon = weapon;
+			this.weapon = a.Weapon;
 			this.angle = angle;
 			mobile = self.Trait<Mobile>();
 			mobile.SetLocation(mobile.FromCell, mobile.FromSubCell, targetMobile.FromCell, targetMobile.FromSubCell);
@@ -46,7 +47,7 @@ namespace OpenRA.Mods.RA.Activities
 			length = Math.Max((to - from).Length / speed.Length, 1);
 
 			// HACK: why isn't this using the interface?
-			self.Trait<WithInfantryBody>().Attacking(self, Target.FromActor(target));
+			self.Trait<WithInfantryBody>().Attacking(self, Target.FromActor(target), a);
 
 			if (weapon.Report != null && weapon.Report.Any())
 				Game.Sound.Play(weapon.Report.Random(self.World.SharedRandom), self.CenterPosition);

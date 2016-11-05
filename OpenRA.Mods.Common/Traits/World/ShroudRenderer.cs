@@ -71,10 +71,10 @@ namespace OpenRA.Mods.Common.Traits
 
 		struct TileInfo
 		{
-			public readonly float2 ScreenPosition;
+			public readonly float3 ScreenPosition;
 			public readonly byte Variant;
 
-			public TileInfo(float2 screenPosition, byte variant)
+			public TileInfo(float3 screenPosition, byte variant)
 			{
 				ScreenPosition = screenPosition;
 				Variant = variant;
@@ -151,14 +151,14 @@ namespace OpenRA.Mods.Common.Traits
 			notVisibleEdges = info.UseExtendedIndex ? Edges.AllSides : Edges.AllCorners;
 		}
 
-		public void WorldLoaded(World w, WorldRenderer wr)
+		void IWorldLoaded.WorldLoaded(World w, WorldRenderer wr)
 		{
 			// Initialize tile cache
 			// This includes the region outside the visible area to cover any sprites peeking outside the map
 			foreach (var uv in w.Map.AllCells.MapCoords)
 			{
 				var pos = w.Map.CenterOfCell(uv.ToCPos(map));
-				var screen = wr.ScreenPosition(pos - new WVec(0, 0, pos.Z));
+				var screen = wr.Screen3DPosition(pos - new WVec(0, 0, pos.Z));
 				var variant = (byte)Game.CosmeticRandom.Next(info.ShroudVariants.Length);
 				tileInfos[uv] = new TileInfo(screen, variant);
 			}
@@ -230,7 +230,7 @@ namespace OpenRA.Mods.Common.Traits
 			cellsDirty.UnionWith(cells);
 		}
 
-		public void RenderShroud(WorldRenderer wr, Shroud shroud)
+		void IRenderShroud.RenderShroud(Shroud shroud, WorldRenderer wr)
 		{
 			if (currentShroud != shroud)
 			{

@@ -29,10 +29,6 @@ Players:
 		Faction: england
 		Allies: Greece
 		Enemies: USSR
-	PlayerReference@Creeps:
-		Name: Creeps
-		NonCombatant: True
-		Faction: england
 	PlayerReference@Greece:
 		Name: Greece
 		Faction: allies
@@ -539,10 +535,10 @@ Actors:
 		Location: 96,54
 		Owner: Greece
 	Gap1: gap
-		Location: 86,50
+		Location: 86,51
 		Owner: Greece
 	Gap2: gap
-		Location: 90,62
+		Location: 90,63
 		Owner: Greece
 	Weap: weap
 		Location: 92,50
@@ -649,4 +645,4 @@ Actors:
 		Location: 33,88
 		Owner: Neutral
 
-Rules: rules.yaml
+Rules: ra|rules/campaign-rules.yaml, ra|rules/campaign-tooltips.yaml, rules.yaml

@@ -4,7 +4,6 @@ FACT:
 		Cost: 4000
 	Tooltip:
 		Name: Construction Yard
-		Description: Builds structures
 	Building:
 		Footprint: xxx xxx
 		Dimensions: 3,2
@@ -25,7 +24,6 @@ FACT:
 		Type: Building.GDI
 		Factions: gdi
 		Group: Building
-		BuildSpeed: 40
 		LowPowerSlowdown: 2
 		QueuedAudio: Building
 		ReadyAudio: ConstructionComplete
@@ -33,7 +31,6 @@ FACT:
 		Type: Building.Nod
 		Factions: nod
 		Group: Building
-		BuildSpeed: 40
 		LowPowerSlowdown: 2
 		QueuedAudio: Building
 		ReadyAudio: ConstructionComplete
@@ -41,7 +38,6 @@ FACT:
 		Type: Defence.GDI
 		Factions: gdi
 		Group: Defence
-		BuildSpeed: 40
 		LowPowerSlowdown: 3
 		QueuedAudio: Building
 		ReadyAudio: ConstructionComplete
@@ -49,7 +45,6 @@ FACT:
 		Type: Defence.Nod
 		Factions: nod
 		Group: Defence
-		BuildSpeed: 40
 		LowPowerSlowdown: 3
 		QueuedAudio: Building
 		ReadyAudio: ConstructionComplete
@@ -69,6 +64,8 @@ FACT:
 	Power:
 		Amount: 0
 	ProvidesPrerequisite@buildingname:
+	Buildable:
+		Description: Builds structures
 
 FACT.GDI:
 	Inherits: FACT
@@ -100,13 +97,13 @@ NUKE:
 		Cost: 500
 	Tooltip:
 		Name: Power Plant
-		Description: Generates power
 	ProvidesPrerequisite:
 		Prerequisite: anypower
 	Buildable:
 		BuildPaletteOrder: 10
 		Prerequisites: fact
 		Queue: Building.GDI, Building.Nod
+		Description: Generates power
 	Building:
 		Footprint: xx xx
 		Dimensions: 2,2
@@ -125,13 +122,13 @@ NUK2:
 		Cost: 800
 	Tooltip:
 		Name: Advanced Power Plant
-		Description: Provides more power, cheaper than the\nstandard Power Plant
 	ProvidesPrerequisite:
 		Prerequisite: anypower
 	Buildable:
 		BuildPaletteOrder: 80
 		Prerequisites: anyhq, ~techlevel.medium
 		Queue: Building.GDI, Building.Nod
+		Description: Provides more power, cheaper than the\nstandard Power Plant
 	Building:
 		Footprint: xx xx
 		Dimensions: 2,2
@@ -150,11 +147,11 @@ PROC:
 		Cost: 1500
 	Tooltip:
 		Name: Tiberium Refinery
-		Description: Processes raw Tiberium\ninto useable resources
 	Buildable:
 		BuildPaletteOrder: 20
 		Prerequisites: anypower
 		Queue: Building.GDI, Building.Nod
+		Description: Processes raw Tiberium\ninto useable resources
 	Building:
 		Footprint: _x_ xxx ===
 		Dimensions: 3,3
@@ -195,11 +192,11 @@ SILO:
 		Cost: 300
 	Tooltip:
 		Name: Tiberium Silo
-		Description: Stores processed Tiberium
 	Buildable:
 		BuildPaletteOrder: 35
 		Prerequisites: proc
 		Queue: Defence.GDI, Defence.Nod
+		Description: Stores processed Tiberium
 	Building:
 		Footprint: xx
 		Dimensions: 2,1
@@ -232,13 +229,13 @@ PYLE:
 		Cost: 500
 	Tooltip:
 		Name: Barracks
-		Description: Trains infantry
 	ProvidesPrerequisite:
 		Prerequisite: barracks
 	Buildable:
 		BuildPaletteOrder: 30
 		Prerequisites: anypower
 		Queue: Building.GDI
+		Description: Trains infantry
 	Building:
 		Footprint: xx xx
 		Dimensions: 2,2
@@ -260,7 +257,6 @@ PYLE:
 		Type: Infantry.GDI
 		Group: Infantry
 		RequireOwner: false
-		BuildSpeed: 40
 		LowPowerSlowdown: 3
 	ProductionBar:
 	Power:
@@ -275,22 +271,23 @@ HAND:
 		Cost: 500
 	Tooltip:
 		Name: Hand of Nod
-		Description: Trains infantry
 	ProvidesPrerequisite:
 		Prerequisite: barracks
 	Buildable:
 		BuildPaletteOrder: 30
 		Prerequisites: anypower
 		Queue: Building.Nod
+		Description: Trains infantry
 	Building:
-		Footprint: __ xx xx
-		Dimensions: 2,3
+		Footprint: xx xx
+		Dimensions: 2,2
 	Health:
 		HP: 500
 	RevealsShroud:
 		Range: 5c0
 	Bib:
 	RallyPoint:
+		Offset: 1,2
 	Exit@1:
 		SpawnOffset: 512,1024,0
 		ExitCell: 1,2
@@ -300,14 +297,15 @@ HAND:
 		Type: Infantry.Nod
 		Group: Infantry
 		RequireOwner: false
-		BuildSpeed: 40
 		LowPowerSlowdown: 3
 	ProductionBar:
 	Power:
 		Amount: -20
 	ProvidesPrerequisite@buildingname:
 	Selectable:
-		Bounds: 48,60,0,-3
+		Bounds: 48,48
+	SelectionDecorations:
+		VisualBounds: 48,68,0,-10
 
 AFLD:
 	Inherits: ^BaseBuilding
@@ -315,13 +313,13 @@ AFLD:
 		Cost: 2000
 	Tooltip:
 		Name: Airstrip
-		Description: Provides a dropzone\nfor vehicle reinforcements
 	ProvidesPrerequisite:
 		Prerequisite: vehicleproduction
 	Buildable:
 		BuildPaletteOrder: 40
 		Prerequisites: proc
 		Queue: Building.Nod
+		Description: Provides a dropzone\nfor vehicle reinforcements
 	Building:
 		Footprint: xxxx xxxx
 		Dimensions: 4,2
@@ -344,7 +342,6 @@ AFLD:
 		Type: Vehicle.Nod
 		Group: Vehicle
 		RequireOwner: false
-		BuildSpeed: 40
 		LowPowerSlowdown: 3
 		ReadyAudio:
 	ProductionBar:
@@ -358,20 +355,20 @@ WEAP:
 		Cost: 2000
 	Tooltip:
 		Name: Weapons Factory
-		Description: Produces vehicles
 	ProvidesPrerequisite:
 		Prerequisite: vehicleproduction
 	Buildable:
 		BuildPaletteOrder: 40
 		Prerequisites: proc
 		Queue: Building.GDI
+		Description: Produces vehicles
 	Building:
-		Footprint: ___ xxx ===
-		Dimensions: 3,3
+		Footprint: xxx ===
+		Dimensions: 3,2
 	Selectable:
-		Bounds: 72,54,0,5
+		Bounds: 72,48
 	SelectionDecorations:
-		VisualBounds: 72,64,0,-5
+		VisualBounds: 72,64,0,-16
 	Health:
 		HP: 1000
 	RevealsShroud:
@@ -380,10 +377,10 @@ WEAP:
 	WithProductionDoorOverlay:
 		Sequence: build-top
 	RallyPoint:
-		Offset: 0,3
+		Offset: 0,2
 	Exit@1:
-		SpawnOffset: -341,-341,0
-		ExitCell: 0,2
+		SpawnOffset: -512,-512,0
+		ExitCell: 0,1
 		ExitDelay: 3
 	Production:
 		Produces: Vehicle.GDI
@@ -391,7 +388,6 @@ WEAP:
 		Type: Vehicle.GDI
 		RequireOwner: false
 		Group: Vehicle
-		BuildSpeed: 40
 		LowPowerSlowdown: 3
 	ProductionBar:
 	Power:
@@ -404,11 +400,11 @@ HPAD:
 		Cost: 1000
 	Tooltip:
 		Name: Helipad
-		Description: Produces, rearms and\nrepairs helicopters
 	Buildable:
 		BuildPaletteOrder: 50
 		Prerequisites: proc
 		Queue: Building.GDI, Building.Nod
+		Description: Produces, rearms and\nrepairs helicopters
 	Building:
 		Footprint: xx xx
 		Dimensions: 2,2
@@ -422,19 +418,18 @@ HPAD:
 		Produces: Aircraft.GDI, Aircraft.Nod
 	Reservable:
 	RepairsUnits:
+		PlayerExperience: 25
 	WithRepairAnimation:
 	RallyPoint:
 	ProductionQueue@GDI:
 		Type: Aircraft.GDI
 		Factions: gdi
 		Group: Aircraft
-		BuildSpeed: 40
 		LowPowerSlowdown: 3
 	ProductionQueue@Nod:
 		Type: Aircraft.Nod
 		Factions: nod
 		Group: Aircraft
-		BuildSpeed: 40
 		LowPowerSlowdown: 3
 	ProductionBar@GDI:
 		ProductionType: Aircraft.GDI
@@ -450,13 +445,13 @@ HQ:
 		Cost: 1000
 	Tooltip:
 		Name: Communications Center
-		Description: Provides radar and Air Strike support power.\nUnlocks higher-tech units and buildings.\nRequires power to operate.
 	ProvidesPrerequisite:
 		Prerequisite: anyhq
 	Buildable:
 		BuildPaletteOrder: 70
 		Prerequisites: proc, ~techlevel.medium
 		Queue: Building.GDI, Building.Nod
+		Description: Provides radar and Air Strike support power.\nUnlocks higher-tech units and buildings.\nRequires power to operate.
 	Building:
 		Footprint: x_ xx
 		Dimensions: 2,2
@@ -488,10 +483,10 @@ HQ:
 		QuantizedFacings: 8
 		Description: Air Strike
 		LongDesc: Deploy an aerial napalm strike.\nBurns buildings and infantry along a line.
-		EndChargeSound: airredy1.aud
-		SelectTargetSound: select1.aud
-		InsufficientPowerSound: nopower1.aud
-		IncomingSound: enemya.aud
+		EndChargeSpeechNotification: AirstrikeReady
+		SelectTargetSpeechNotification: SelectTarget
+		InsufficientPowerSpeechNotification: InsufficientPower
+		IncomingSpeechNotification: EnemyPlanesApproaching
 		UnitType: a10
 		DisplayBeacon: True
 		BeaconPoster: airstrike
@@ -508,11 +503,11 @@ FIX:
 		Cost: 500
 	Tooltip:
 		Name: Repair Facility
-		Description: Repairs vehicles
 	Buildable:
 		BuildPaletteOrder: 60
 		Prerequisites: vehicleproduction
 		Queue: Building.GDI, Building.Nod
+		Description: Repairs vehicles
 	Building:
 		Footprint: _x_ xxx _x_
 		Dimensions: 3,3
@@ -521,7 +516,7 @@ FIX:
 	SelectionDecorations:
 		VisualBounds: 72,48
 	Health:
-		HP: 600
+		HP: 700
 	RevealsShroud:
 		Range: 5c0
 	Bib:
@@ -529,6 +524,7 @@ FIX:
 	Reservable:
 	RepairsUnits:
 		Interval: 15
+		PlayerExperience: 25
 	RallyPoint:
 	WithRepairAnimation:
 	Power:
@@ -541,13 +537,13 @@ EYE:
 		Cost: 1800
 	Tooltip:
 		Name: Advanced Communications Center
-		Description: Provides radar and Orbital Ion Cannon support power.\nUnlocks Mammoth Tank and Commando.\nRequires power to operate.
 	ProvidesPrerequisite:
 		Prerequisite: anyhq
 	Buildable:
 		BuildPaletteOrder: 100
 		Prerequisites: anyhq, ~techlevel.high
 		Queue: Building.GDI
+		Description: Provides radar and Orbital Ion Cannon support power.\nUnlocks Mammoth Tank and Commando.\nRequires power to operate.
 	Building:
 		Footprint: x_ xx
 		Dimensions: 2,2
@@ -578,11 +574,11 @@ EYE:
 		ChargeTime: 180
 		Description: Ion Cannon
 		LongDesc: Initiate an Ion Cannon strike.\nApplies instant damage to a small area.
-		BeginChargeSound: ionchrg1.aud
-		EndChargeSound: ionredy1.aud
-		LaunchSound: ion1.aud
-		SelectTargetSound: select1.aud
-		InsufficientPowerSound: nopower1.aud
+		BeginChargeSpeechNotification: IonCannonCharging
+		EndChargeSpeechNotification: IonCannonReady
+		SelectTargetSpeechNotification: SelectTarget
+		InsufficientPowerSpeechNotification: InsufficientPower
+		OnFireSound: ion1.aud
 		DisplayRadarPing: True
 		CameraActor: camera.small
 	SupportPowerChargeBar:
@@ -596,20 +592,20 @@ TMPL:
 		Cost: 2000
 	Tooltip:
 		Name: Temple of Nod
-		Description: Provides Nuclear Strike support power.\nUnlocks Stealth Tank, Chem. Warrior and Obelisk of Light.\nRequires power to operate.
 	ProvidesPrerequisite:
 		Prerequisite: anyhq
 	Buildable:
 		BuildPaletteOrder: 100
 		Prerequisites: anyhq, ~techlevel.high
 		Queue: Building.Nod
+		Description: Provides Nuclear Strike support power.\nUnlocks Stealth Tank, Chem. Warrior and Obelisk of Light.\nRequires power to operate.
 	Building:
-		Footprint: ___ xxx xxx
-		Dimensions: 3,3
+		Footprint: xxx xxx
+		Dimensions: 3,2
 	Selectable:
-		Bounds: 72,60,0,9
+		Bounds: 72,48
 	SelectionDecorations:
-		VisualBounds: 72,72,0,-3
+		VisualBounds: 72,68,0,-12
 	RequiresPower:
 	CanPowerDown:
 		PowerupSound: EnablePower
@@ -627,12 +623,11 @@ TMPL:
 		ChargeTime: 300
 		Description: Nuclear Strike
 		LongDesc: Launch a tactical nuclear warhead.\nApplies heavy damage over a large area.
-		BeginChargeSound:
-		EndChargeSound: nukavail.aud
-		SelectTargetSound: select1.aud
-		InsufficientPowerSound: nopower1.aud
-		LaunchSound: nuklnch1.aud
-		IncomingSound: nuke1.aud
+		EndChargeSpeechNotification: NuclearWeaponAvailable
+		SelectTargetSpeechNotification: SelectTarget
+		InsufficientPowerSpeechNotification: InsufficientPower
+		LaunchSpeechNotification: NuclearWeaponLaunched
+		IncomingSpeechNotification: NuclearWarheadApproaching
 		MissileWeapon: atomic
 		DisplayBeacon: True
 		BeaconPoster: atomic
@@ -648,15 +643,15 @@ GUN:
 	Inherits: ^Defense
 	Valued:
 		Cost: 600
-	CustomBuildTimeValue:
-		Value: 1440
 	Tooltip:
 		Name: Turret
-		Description: Basic Anti-Tank base defense.\n  Strong vs Tanks, vehicles\n  Weak vs Infantry
 	Buildable:
 		BuildPaletteOrder: 45
 		Prerequisites: barracks
 		Queue: Defence.GDI, Defence.Nod
+		BuildDuration: 1440
+		BuildDurationModifier: 40
+		Description: Basic Anti-Tank base defense.\n  Strong vs Tanks, vehicles\n  Weak vs Infantry
 	Building:
 	Health:
 		HP: 400
@@ -688,16 +683,16 @@ GUN:
 SAM:
 	Inherits: ^Defense
 	Valued:
-		Cost: 700
-	CustomBuildTimeValue:
-		Value: 2000
+		Cost: 650
 	Tooltip:
 		Name: SAM Site
-		Description: Anti-Aircraft base defense.\n  Strong vs Aircraft\n  Cannot target Ground units.
 	Buildable:
 		BuildPaletteOrder: 50
 		Prerequisites: hand
 		Queue: Defence.Nod
+		BuildDuration: 1700
+		BuildDurationModifier: 40
+		Description: Anti-Aircraft base defense.\n  Strong vs Aircraft\n  Cannot target Ground units.
 	Building:
 		Footprint: xx
 		Dimensions: 2,1
@@ -731,22 +726,19 @@ OBLI:
 	Inherits: ^Defense
 	Valued:
 		Cost: 1500
-	CustomBuildTimeValue:
-		Value: 3120
 	Tooltip:
 		Name: Obelisk of Light
-		Description: Advanced base defense.\nRequires power to operate.\n  Strong vs all Ground units\n  Cannot target Aircraft
 	Buildable:
 		BuildPaletteOrder: 60
 		Prerequisites: tmpl, ~techlevel.high
 		Queue: Defence.Nod
-	Building:
-		Footprint: _ x
-		Dimensions: 1,2
+		BuildDuration: 3120
+		BuildDurationModifier: 40
+		Description: Advanced base defense.\nRequires power to operate.\n  Strong vs all Ground units\n  Cannot target Aircraft
 	Selectable:
-		Bounds: 24,24,0,12
+		Bounds: 24,24
 	SelectionDecorations:
-		VisualBounds: 22,42
+		VisualBounds: 22,44,0,-10
 	RequiresPower:
 	DisabledOverlay:
 	Health:
@@ -760,7 +752,7 @@ OBLI:
 	WithChargeAnimation:
 	Armament:
 		Weapon: Laser
-		LocalOffset: 0,0,725
+		LocalOffset: 0,-85,1280
 		FireDelay: 0
 	AttackCharge:
 		ChargeAudio: obelpowr.aud
@@ -776,15 +768,15 @@ GTWR:
 	Inherits: ^Defense
 	Valued:
 		Cost: 600
-	CustomBuildTimeValue:
-		Value: 1440
 	Tooltip:
 		Name: Guard Tower
-		Description: Basic defensive structure.\n  Strong vs Infantry\n  Weak vs Tanks
 	Buildable:
 		BuildPaletteOrder: 40
 		Prerequisites: barracks
 		Queue: Defence.GDI, Defence.Nod
+		BuildDuration: 1440
+		BuildDurationModifier: 40
+		Description: Basic defensive structure.\n  Strong vs Infantry\n  Weak vs Tanks
 	Building:
 	Health:
 		HP: 400
@@ -811,22 +803,19 @@ ATWR:
 	Inherits: ^Defense
 	Valued:
 		Cost: 1000
-	CustomBuildTimeValue:
-		Value: 2880
 	Tooltip:
 		Name: Advanced Guard Tower
-		Description: All-purpose defensive structure.\n  Strong vs Aircraft, Tanks\n  Weak vs Infantry
 	Buildable:
 		BuildPaletteOrder: 60
 		Prerequisites: anyhq, ~techlevel.medium
 		Queue: Defence.GDI
-	Building:
-		Footprint: _ x
-		Dimensions: 1,2
+		BuildDuration: 2880
+		BuildDurationModifier: 40
+		Description: All-purpose defensive structure.\n  Strong vs Aircraft, Tanks\n  Weak vs Infantry
 	Selectable:
-		Bounds: 24,24,0,12
+		Bounds: 24,24
 	SelectionDecorations:
-		VisualBounds: 24,48,0,-3
+		VisualBounds: 22,48,0,-12
 	RequiresPower:
 	DisabledOverlay:
 	Health:
@@ -839,7 +828,7 @@ ATWR:
 		HasMinibib: Yes
 	Turreted:
 		TurnSpeed: 255
-		Offset: 128,128,0
+		Offset: 128,128,384
 	Armament@PRIMARY:
 		Weapon: TowerMissle
 		LocalOffset: 256,128,0, 256,-128,0
@@ -864,11 +853,11 @@ SBAG:
 		Value: 0
 	Tooltip:
 		Name: Sandbag Barrier
-		Description: Stops infantry and light vehicles.\nCan be crushed by tanks.
 	Buildable:
 		BuildPaletteOrder: 20
 		Prerequisites: fact
 		Queue: Defence.GDI
+		Description: Stops infantry and light vehicles.\nCan be crushed by tanks.
 	Armor:
 		Type: Light
 	LineBuild:
@@ -887,11 +876,11 @@ CYCL:
 		Value: 0
 	Tooltip:
 		Name: Chain Link Barrier
-		Description: Stops infantry and light vehicles.\nCan be crushed by tanks.
 	Buildable:
 		BuildPaletteOrder: 20
 		Prerequisites: fact
 		Queue: Defence.Nod
+		Description: Stops infantry and light vehicles.\nCan be crushed by tanks.
 	Armor:
 		Type: Light
 	LineBuild:
@@ -905,16 +894,18 @@ CYCL:
 BRIK:
 	Inherits: ^Wall
 	Valued:
-		Cost: 100
+		Cost: 150
 	CustomSellValue:
 		Value: 0
 	Tooltip:
 		Name: Concrete Barrier
-		Description: Stops infantry and most tanks.\nBlocks some projectiles.
 	Buildable:
 		BuildPaletteOrder: 30
 		Prerequisites: vehicleproduction
 		Queue: Defence.GDI, Defence.Nod
+		BuildDuration: 500
+		BuildDurationModifier: 40
+		Description: Stops infantry and most tanks.\nBlocks some projectiles.
 	Health:
 		HP: 250
 	Armor:
@@ -937,22 +928,26 @@ BARRACKS:
 	AlwaysVisible:
 	Tooltip:
 		Name: Infantry Production
+	Buildable:
 		Description: Infantry Production
 
 VEHICLEPRODUCTION:
 	AlwaysVisible:
 	Tooltip:
 		Name: Vehicle Production
+	Buildable:
 		Description: Vehicle Production
 
 ANYPOWER:
 	AlwaysVisible:
 	Tooltip:
 		Name: Power Plant
+	Buildable:
 		Description: Power Plant
 
 ANYHQ:
 	AlwaysVisible:
 	Tooltip:
 		Name: a communications center
+	Buildable:
 		Description: a communications center

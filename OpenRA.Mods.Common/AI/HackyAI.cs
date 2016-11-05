@@ -16,17 +16,34 @@ using System.Linq;
 using OpenRA.Mods.Common.Activities;
 using OpenRA.Mods.Common.Pathfinder;
 using OpenRA.Mods.Common.Traits;
-using OpenRA.Primitives;
 using OpenRA.Support;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.AI
 {
+	class CaptureTarget<TInfoType> where TInfoType : class, ITraitInfoInterface
+	{
+		internal readonly Actor Actor;
+		internal readonly TInfoType Info;
+
+		/// <summary>The order string given to the capturer so they can capture this actor.</summary>
+		/// <example>ExternalCaptureActor</example>
+		internal readonly string OrderString;
+
+		internal CaptureTarget(Actor actor, string orderString)
+		{
+			Actor = actor;
+			Info = actor.Info.TraitInfoOrDefault<TInfoType>();
+			OrderString = orderString;
+		}
+	}
+
 	public sealed class HackyAIInfo : IBotInfo, ITraitInfo
 	{
 		public class UnitCategories
 		{
 			public readonly HashSet<string> Mcv = new HashSet<string>();
+			public readonly HashSet<string> ExcludeFromSquads = new HashSet<string>();
 		}
 
 		public class BuildingCategories
@@ -125,10 +142,16 @@ namespace OpenRA.Mods.Common.AI
 		[Desc("Radius in cells around the center of the base to expand.")]
 		public readonly int MaxBaseRadius = 20;
 
+		[Desc("Should deployment of additional MCVs be restricted to MaxBaseRadius if explicit deploy locations are missing or occupied?")]
+		public readonly bool RestrictMCVDeploymentFallbackToBase = true;
+
 		[Desc("Radius in cells around each building with ProvideBuildableArea",
 			"to check for a 3x3 area of water where naval structures can be built.",
 			"Should match maximum adjacency of naval structures.")]
 		public readonly int CheckForWaterRadius = 8;
+
+		[Desc("Terrain types which are considered water for base building purposes.")]
+		public readonly HashSet<string> WaterTerrainTypes = new HashSet<string> { "Water" };
 
 		[Desc("Avoid enemy actors nearby when searching for a new resource patch. Should be somewhere near the max weapon range.")]
 		public readonly WDist HarvesterEnemyAvoidanceRadius = WDist.FromCells(8);
@@ -150,7 +173,7 @@ namespace OpenRA.Mods.Common.AI
 		[Desc("What buildings to the AI should build.", "What % of the total base must be this type of building.")]
 		public readonly Dictionary<string, float> BuildingFractions = null;
 
-		[Desc("Tells the AI what unit types fall under the same common name. Only supported entry is Mcv.")]
+		[Desc("Tells the AI what unit types fall under the same common name. Supported entries are Mcv and ExcludeFromSquads.")]
 		[FieldLoader.LoadUsing("LoadUnitCategories", true)]
 		public readonly UnitCategories UnitsCommonNames;
 
@@ -166,6 +189,27 @@ namespace OpenRA.Mods.Common.AI
 		[Desc("Tells the AI how to use its support powers.")]
 		[FieldLoader.LoadUsing("LoadDecisions")]
 		public readonly List<SupportPowerDecision> PowerDecisions = new List<SupportPowerDecision>();
+
+		[Desc("Actor types that can capture other actors (via `Captures` or `ExternalCaptures`).",
+			"Leave this empty to disable capturing.")]
+		public HashSet<string> CapturingActorTypes = new HashSet<string>();
+
+		[Desc("Actor types that can be targeted for capturing.",
+			"Leave this empty to include all actors.")]
+		public HashSet<string> CapturableActorTypes = new HashSet<string>();
+
+		[Desc("Minimum delay (in ticks) between trying to capture with CapturingActorTypes.")]
+		public readonly int MinimumCaptureDelay = 375;
+
+		[Desc("Maximum number of options to consider for capturing.",
+			"If a value less than 1 is given 1 will be used instead.")]
+		public readonly int MaximumCaptureTargetOptions = 10;
+
+		[Desc("Should visibility (Shroud, Fog, Cloak, etc) be considered when searching for capturable targets?")]
+		public readonly bool CheckCaptureTargetsForVisibility = true;
+
+		[Desc("Player stances that capturers should attempt to target.")]
+		public readonly Stance CapturableStances = Stance.Enemy | Stance.Neutral;
 
 		static object LoadUnitCategories(MiniYaml yaml)
 		{
@@ -191,8 +235,6 @@ namespace OpenRA.Mods.Common.AI
 
 		public object Create(ActorInitializer init) { return new HackyAI(this, init); }
 	}
-
-	public class Enemy { public int Aggro; }
 
 	public enum BuildingType { Building, Defense, Refinery }
 
@@ -232,7 +274,6 @@ namespace OpenRA.Mods.Common.AI
 
 		BitArray resourceTypeIndices;
 
-		Cache<Player, Enemy> aggro = new Cache<Player, Enemy>(_ => new Enemy());
 		List<BaseBuilder> builders = new List<BaseBuilder>();
 
 		List<Actor> unitsHangingAroundTheBase = new List<Actor>();
@@ -250,6 +291,8 @@ namespace OpenRA.Mods.Common.AI
 		int assignRolesTicks;
 		int attackForceTicks;
 		int minAttackForceDelayTicks;
+		int minCaptureDelayTicks;
+		readonly int maximumCaptureTargetOptions;
 
 		readonly Queue<Order> orders = new Queue<Order>();
 
@@ -275,6 +318,8 @@ namespace OpenRA.Mods.Common.AI
 
 			foreach (var decision in info.PowerDecisions)
 				powerDecisions.Add(decision.OrderName, decision);
+
+			maximumCaptureTargetOptions = Math.Max(1, Info.MaximumCaptureTargetOptions);
 		}
 
 		public static void BotDebug(string s, params object[] args)
@@ -307,6 +352,7 @@ namespace OpenRA.Mods.Common.AI
 			assignRolesTicks = Random.Next(0, Info.AssignRolesInterval);
 			attackForceTicks = Random.Next(0, Info.AttackForceInterval);
 			minAttackForceDelayTicks = Random.Next(0, Info.MinimumAttackForceDelay);
+			minCaptureDelayTicks = Random.Next(0, Info.MinimumCaptureDelay);
 
 			var tileset = World.Map.Rules.TileSet;
 			resourceTypeIndices = new BitArray(tileset.TerrainInfo.Length); // Big enough
@@ -322,14 +368,13 @@ namespace OpenRA.Mods.Common.AI
 
 			foreach (var b in baseProviders)
 			{
-				// TODO: Unhardcode terrain type
-				// TODO2: Properly check building foundation rather than 3x3 area
+				// TODO: Properly check building foundation rather than 3x3 area
 				var playerWorld = Player.World;
 				var countWaterCells = Map.FindTilesInCircle(b.Location, Info.MaxBaseRadius)
 					.Where(c => playerWorld.Map.Contains(c)
-						&& playerWorld.Map.GetTerrainInfo(c).IsWater
+						&& Info.WaterTerrainTypes.Contains(playerWorld.Map.GetTerrainInfo(c).Type)
 						&& Util.AdjacentCells(playerWorld, Target.FromCell(playerWorld, c))
-							.All(a => playerWorld.Map.GetTerrainInfo(a).IsWater))
+							.All(a => Info.WaterTerrainTypes.Contains(playerWorld.Map.GetTerrainInfo(a).Type)))
 					.Count();
 
 				if (countWaterCells > 0)
@@ -347,14 +392,13 @@ namespace OpenRA.Mods.Common.AI
 
 			foreach (var a in areaProviders)
 			{
-				// TODO: Unhardcode terrain type
-				// TODO2: Properly check building foundation rather than 3x3 area
+				// TODO: Properly check building foundation rather than 3x3 area
 				var playerWorld = Player.World;
 				var adjacentWater = Map.FindTilesInCircle(a.Location, Info.CheckForWaterRadius)
 					.Where(c => playerWorld.Map.Contains(c)
-						&& playerWorld.Map.GetTerrainInfo(c).IsWater
+						&& Info.WaterTerrainTypes.Contains(playerWorld.Map.GetTerrainInfo(c).Type)
 						&& Util.AdjacentCells(playerWorld, Target.FromCell(playerWorld, c))
-							.All(b => playerWorld.Map.GetTerrainInfo(b).IsWater))
+							.All(ac => Info.WaterTerrainTypes.Contains(playerWorld.Map.GetTerrainInfo(ac).Type)))
 					.Count();
 
 				if (adjacentWater > 0)
@@ -559,45 +603,6 @@ namespace OpenRA.Mods.Common.AI
 				World.IssueOrder(orders.Dequeue());
 		}
 
-		internal Actor ChooseEnemyTarget()
-		{
-			if (Player.WinState != WinState.Undefined)
-				return null;
-
-			var liveEnemies = World.Players
-				.Where(p => Player != p && Player.Stances[p] == Stance.Enemy && p.WinState == WinState.Undefined);
-
-			if (!liveEnemies.Any())
-				return null;
-
-			var leastLikedEnemies = liveEnemies
-				.GroupBy(e => aggro[e].Aggro)
-				.MaxByOrDefault(g => g.Key);
-
-			var enemy = (leastLikedEnemies != null) ?
-				leastLikedEnemies.Random(Random) : liveEnemies.FirstOrDefault();
-
-			// Pick something worth attacking owned by that player
-			var target = World.ActorsHavingTrait<IOccupySpace>()
-				.Where(a => a.Owner == enemy)
-				.ClosestTo(World.Map.CenterOfCell(GetRandomBaseCenter()));
-
-			if (target == null)
-			{
-				/* Assume that "enemy" has nothing. Cool off on attacks. */
-				aggro[enemy].Aggro = aggro[enemy].Aggro / 2 - 1;
-				Log.Write("debug", "Bot {0} couldn't find target for player {1}", Player.ClientIndex, enemy.ClientIndex);
-
-				return null;
-			}
-
-			// Bump the aggro slightly to avoid changing our mind
-			if (leastLikedEnemies.Count() > 1)
-				aggro[enemy].Aggro++;
-
-			return target;
-		}
-
 		internal Actor FindClosestEnemy(WPos pos)
 		{
 			return World.Actors.Where(isEnemyUnit).ClosestTo(pos);
@@ -654,20 +659,108 @@ namespace OpenRA.Mods.Common.AI
 					s.Update();
 			}
 
-			if (--assignRolesTicks > 0)
-				return;
+			if (--assignRolesTicks <= 0)
+			{
+				assignRolesTicks = Info.AssignRolesInterval;
+				GiveOrdersToIdleHarvesters();
+				FindNewUnits(self);
+				FindAndDeployBackupMcv(self);
+			}
 
-			assignRolesTicks = Info.AssignRolesInterval;
-
-			GiveOrdersToIdleHarvesters();
-			FindNewUnits(self);
 			if (--minAttackForceDelayTicks <= 0)
 			{
 				minAttackForceDelayTicks = Info.MinimumAttackForceDelay;
 				CreateAttackForce();
 			}
 
-			FindAndDeployBackupMcv(self);
+			if (--minCaptureDelayTicks <= 0)
+			{
+				minCaptureDelayTicks = Info.MinimumCaptureDelay;
+				QueueCaptureOrders();
+			}
+		}
+
+		IEnumerable<Actor> GetVisibleActorsBelongingToPlayer(Player owner)
+		{
+			foreach (var actor in GetActorsThatCanBeOrderedByPlayer(owner))
+				if (actor.CanBeViewedByPlayer(Player))
+					yield return actor;
+		}
+
+		IEnumerable<Actor> GetActorsThatCanBeOrderedByPlayer(Player owner)
+		{
+			foreach (var actor in World.Actors)
+				if (actor.Owner == owner && !actor.IsDead && actor.IsInWorld)
+					yield return actor;
+		}
+
+		void QueueCaptureOrders()
+		{
+			if (!Info.CapturingActorTypes.Any() || Player.WinState != WinState.Undefined)
+				return;
+
+			var capturers = unitsHangingAroundTheBase.Where(a => a.IsIdle && Info.CapturingActorTypes.Contains(a.Info.Name)).ToArray();
+			if (capturers.Length == 0)
+				return;
+
+			var randPlayer = World.Players.Where(p => !p.Spectating
+				&& Info.CapturableStances.HasStance(Player.Stances[p])).Random(Random);
+
+			var targetOptions = Info.CheckCaptureTargetsForVisibility
+				? GetVisibleActorsBelongingToPlayer(randPlayer)
+				: GetActorsThatCanBeOrderedByPlayer(randPlayer);
+
+			var capturableTargetOptions = targetOptions
+				.Select(a => new CaptureTarget<CapturableInfo>(a, "CaptureActor"))
+				.Where(target => target.Info != null && capturers.Any(capturer => target.Info.CanBeTargetedBy(capturer, target.Actor.Owner)))
+				.OrderByDescending(target => target.Actor.GetSellValue())
+				.Take(maximumCaptureTargetOptions);
+
+			var externalCapturableTargetOptions = targetOptions
+				.Select(a => new CaptureTarget<ExternalCapturableInfo>(a, "ExternalCaptureActor"))
+				.Where(target => target.Info != null && capturers.Any(capturer => target.Info.CanBeTargetedBy(capturer, target.Actor.Owner)))
+				.OrderByDescending(target => target.Actor.GetSellValue())
+				.Take(maximumCaptureTargetOptions);
+
+			if (Info.CapturableActorTypes.Any())
+			{
+				capturableTargetOptions = capturableTargetOptions.Where(target => Info.CapturableActorTypes.Contains(target.Actor.Info.Name.ToLowerInvariant()));
+				externalCapturableTargetOptions = externalCapturableTargetOptions.Where(target => Info.CapturableActorTypes.Contains(target.Actor.Info.Name.ToLowerInvariant()));
+			}
+
+			if (!capturableTargetOptions.Any() && !externalCapturableTargetOptions.Any())
+				return;
+
+			var capturesCapturers = capturers.Where(a => a.Info.HasTraitInfo<CapturesInfo>());
+			var externalCapturers = capturers.Except(capturesCapturers).Where(a => a.Info.HasTraitInfo<ExternalCapturesInfo>());
+
+			foreach (var capturer in capturesCapturers)
+				QueueCaptureOrderFor(capturer, GetCapturerTargetClosestToOrDefault(capturer, capturableTargetOptions));
+
+			foreach (var capturer in externalCapturers)
+				QueueCaptureOrderFor(capturer, GetCapturerTargetClosestToOrDefault(capturer, externalCapturableTargetOptions));
+		}
+
+		void QueueCaptureOrderFor<TTargetType>(Actor capturer, CaptureTarget<TTargetType> target) where TTargetType : class, ITraitInfoInterface
+		{
+			if (capturer == null)
+				return;
+
+			if (target == null)
+				return;
+
+			if (target.Actor == null)
+				return;
+
+			QueueOrder(new Order(target.OrderString, capturer, true) { TargetActor = target.Actor });
+			BotDebug("AI ({0}): Ordered {1} to capture {2}", Player.ClientIndex, capturer, target.Actor);
+			activeUnits.Remove(capturer);
+		}
+
+		CaptureTarget<TTargetType> GetCapturerTargetClosestToOrDefault<TTargetType>(Actor capturer, IEnumerable<CaptureTarget<TTargetType>> targets)
+			where TTargetType : class, ITraitInfoInterface
+		{
+			return targets.MinByOrDefault(target => (target.Actor.CenterPosition - capturer.CenterPosition).LengthSquared);
 		}
 
 		CPos FindNextResource(Actor harvester)
@@ -720,7 +813,8 @@ namespace OpenRA.Mods.Common.AI
 		void FindNewUnits(Actor self)
 		{
 			var newUnits = self.World.ActorsHavingTrait<IPositionable>()
-				.Where(a => a.Owner == Player && !Info.UnitsCommonNames.Mcv.Contains(a.Info.Name) && !activeUnits.Contains(a));
+				.Where(a => a.Owner == Player && !Info.UnitsCommonNames.Mcv.Contains(a.Info.Name) &&
+					!Info.UnitsCommonNames.ExcludeFromSquads.Contains(a.Info.Name) && !activeUnits.Contains(a));
 
 			foreach (var a in newUnits)
 			{
@@ -859,7 +953,7 @@ namespace OpenRA.Mods.Common.AI
 		}
 
 		// Find any newly constructed MCVs and deploy them at a sensible
-		// backup location within the main base.
+		// backup location.
 		void FindAndDeployBackupMcv(Actor self)
 		{
 			var mcvs = self.World.Actors.Where(a => a.Owner == Player &&
@@ -867,11 +961,15 @@ namespace OpenRA.Mods.Common.AI
 
 			foreach (var mcv in mcvs)
 			{
-				if (mcv.IsMoving())
+				if (!mcv.IsIdle)
 					continue;
 
+				// If we lack a base, we need to make sure we don't restrict deployment of the MCV to the base!
+				var restrictToBase =
+					Info.RestrictMCVDeploymentFallbackToBase &&
+					CountBuildingByCommonName(Info.BuildingCommonNames.ConstructionYard, Player) > 0;
 				var factType = mcv.Info.TraitInfo<TransformsInfo>().IntoActor;
-				var desiredLocation = ChooseBuildLocation(factType, false, BuildingType.Building);
+				var desiredLocation = ChooseBuildLocation(factType, restrictToBase, BuildingType.Building);
 				if (desiredLocation == null)
 					continue;
 
@@ -1090,9 +1188,6 @@ namespace OpenRA.Mods.Common.AI
 
 			if (!e.Attacker.Info.HasTraitInfo<ITargetableInfo>())
 				return;
-
-			if (e.Damage > 0)
-				aggro[e.Attacker.Owner].Aggro += e.Damage;
 
 			// Protected harvesters or building
 			if ((self.Info.HasTraitInfo<HarvesterInfo>() || self.Info.HasTraitInfo<BuildingInfo>()) &&

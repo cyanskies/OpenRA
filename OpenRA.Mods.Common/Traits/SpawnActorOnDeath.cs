@@ -52,17 +52,18 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		readonly SpawnActorOnDeathInfo info;
 		readonly string faction;
+		readonly bool enabled;
 
 		public SpawnActorOnDeath(ActorInitializer init, SpawnActorOnDeathInfo info)
 		{
 			this.info = info;
-
+			enabled = !info.RequiresLobbyCreeps || init.Self.World.WorldActor.Trait<MapCreeps>().Enabled;
 			faction = init.Contains<FactionInit>() ? init.Get<FactionInit, string>() : init.Self.Owner.Faction.InternalName;
 		}
 
 		public void Killed(Actor self, AttackInfo e)
 		{
-			if (info.RequiresLobbyCreeps && !self.World.LobbyInfo.GlobalSettings.Creeps)
+			if (!enabled)
 				return;
 
 			if (!self.IsInWorld)
@@ -71,12 +72,15 @@ namespace OpenRA.Mods.Common.Traits
 			if (self.World.SharedRandom.Next(100) > info.Probability)
 				return;
 
-			var warhead = e.Warhead as DamageWarhead;
-			if (info.DeathType != null && (warhead == null || !warhead.DamageTypes.Contains(info.DeathType)))
+			if (info.DeathType != null && !e.Damage.DamageTypes.Contains(info.DeathType))
 				return;
 
 			self.World.AddFrameEndTask(w =>
 			{
+				// Actor has been disposed by something else before its death (for example `Enter`).
+				if (self.Disposed)
+					return;
+
 				var td = new TypeDictionary
 				{
 					new ParentActorInit(self),

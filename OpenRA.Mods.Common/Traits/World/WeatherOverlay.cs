@@ -19,8 +19,8 @@ namespace OpenRA.Mods.Common.Traits
 	[Desc("Adds a particle-based overlay.")]
 	public class WeatherOverlayInfo : ITraitInfo, ILobbyCustomRulesIgnore
 	{
-		[Desc("Factor for particle density. As higher as more particles will get spawned.")]
-		public readonly float ParticleDensityFactor = 0.0007625f;
+		[Desc("Average number of particles per 100x100 px square.")]
+		public readonly int ParticleDensityFactor = 8;
 
 		[Desc("Should the level of the wind change over time, or just stick to the first value of WindLevels?")]
 		public readonly bool ChangingWindLevel = true;
@@ -69,7 +69,7 @@ namespace OpenRA.Mods.Common.Traits
 		public object Create(ActorInitializer init) { return new WeatherOverlay(init.World, this); }
 	}
 
-	public class WeatherOverlay : ITick, IPostRender
+	public class WeatherOverlay : ITick, IRenderAboveWorld
 	{
 		readonly WeatherOverlayInfo info;
 		readonly World world;
@@ -111,7 +111,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		int CalculateParticleCount(int x, int y)
 		{
-			return (int)(x * y * info.ParticleDensityFactor);
+			return (int)(x * y * info.ParticleDensityFactor / 10000);
 		}
 
 		void SpawnParticles(int count, int rangeY, int spawnChancePercent)
@@ -201,7 +201,7 @@ namespace OpenRA.Mods.Common.Traits
 			tempParticle.SwingOffset += tempParticle.SwingDirection * tempParticle.SwingSpeed;
 		}
 
-		public void Tick(Actor self)
+		void ITick.Tick(Actor self)
 		{
 			windTickCountdown--;
 		}
@@ -298,7 +298,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		public void RenderAfterWorld(WorldRenderer wr, Actor self)
+		void IRenderAboveWorld.RenderAboveWorld(Actor self, WorldRenderer wr)
 		{
 			if (!world.Paused)
 				UpdateWeatherOverlay(wr);

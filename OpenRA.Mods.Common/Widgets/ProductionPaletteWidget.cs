@@ -16,6 +16,7 @@ using System.Linq;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Orders;
 using OpenRA.Mods.Common.Traits;
+using OpenRA.Mods.Common.Traits.Render;
 using OpenRA.Network;
 using OpenRA.Widgets;
 
@@ -233,6 +234,7 @@ namespace OpenRA.Mods.Common.Widgets
 			{
 				// Queue a new item
 				Game.Sound.Play(TabClick);
+				Game.Sound.PlayNotification(World.Map.Rules, World.LocalPlayer, "Speech", CurrentQueue.Info.QueuedAudio, World.LocalPlayer.Faction.InternalName);
 				World.IssueOrder(Order.StartProduction(CurrentQueue.Actor, icon.Name, handleCount));
 				return true;
 			}
@@ -298,8 +300,12 @@ namespace OpenRA.Mods.Common.Widgets
 				return false;
 
 			var hotkey = Hotkey.FromKeyInput(e);
+			var batchModifiers = e.Modifiers.HasModifier(Modifiers.Shift) ? Modifiers.Shift : Modifiers.None;
+			if (batchModifiers != Modifiers.None)
+				hotkey = new Hotkey(hotkey.Key, hotkey.Modifiers ^ Modifiers.Shift);
+
 			var toBuild = icons.Values.FirstOrDefault(i => i.Hotkey == hotkey);
-			return toBuild != null ? HandleEvent(toBuild, MouseButton.Left, Modifiers.None) : false;
+			return toBuild != null ? HandleEvent(toBuild, MouseButton.Left, batchModifiers) : false;
 		}
 
 		public void RefreshIcons()
@@ -332,9 +338,8 @@ namespace OpenRA.Mods.Common.Widgets
 
 				var rsi = item.TraitInfo<RenderSpritesInfo>();
 				var icon = new Animation(World, rsi.GetImage(item, World.Map.Rules.Sequences, faction));
-				icon.Play(item.TraitInfo<TooltipInfo>().Icon);
-
 				var bi = item.TraitInfo<BuildableInfo>();
+				icon.Play(bi.Icon);
 
 				var pi = new ProductionIcon()
 				{

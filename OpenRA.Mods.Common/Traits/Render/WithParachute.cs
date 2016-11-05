@@ -9,16 +9,17 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Graphics;
 using OpenRA.Traits;
 
-namespace OpenRA.Mods.Common.Traits
+namespace OpenRA.Mods.Common.Traits.Render
 {
 	[Desc("Renders a parachute on units.")]
-	public class WithParachuteInfo : UpgradableTraitInfo, ITraitInfo, IRenderActorPreviewSpritesInfo, Requires<RenderSpritesInfo>, Requires<BodyOrientationInfo>
+	public class WithParachuteInfo : UpgradableTraitInfo, IRenderActorPreviewSpritesInfo, Requires<RenderSpritesInfo>, Requires<BodyOrientationInfo>
 	{
 		[Desc("The image that contains the parachute sequences.")]
 		public readonly string Image = null;
@@ -68,18 +69,32 @@ namespace OpenRA.Mods.Common.Traits
 			if (Palette != null)
 				p = init.WorldRenderer.Palette(Palette);
 
+			Func<int> facing;
+			if (init.Contains<DynamicFacingInit>())
+				facing = init.Get<DynamicFacingInit, Func<int>>();
+			else
+			{
+				var f = init.Contains<FacingInit>() ? init.Get<FacingInit, int>() : 0;
+				facing = () => f;
+			}
+
 			var anim = new Animation(init.World, image);
 			anim.PlayThen(OpeningSequence, () => anim.PlayRepeating(Sequence));
 
 			var body = init.Actor.TraitInfo<BodyOrientationInfo>();
-			var facing = init.Contains<FacingInit>() ? init.Get<FacingInit, int>() : 0;
-			var orientation = body.QuantizeOrientation(new WRot(WAngle.Zero, WAngle.Zero, WAngle.FromFacing(facing)), facings);
-			var offset = body.LocalToWorld(Offset.Rotate(orientation));
-			yield return new SpriteActorPreview(anim, offset, offset.Y + offset.Z + 1, p, rs.Scale);
+			Func<WRot> orientation = () => body.QuantizeOrientation(WRot.FromFacing(facing()), facings);
+			Func<WVec> offset = () => body.LocalToWorld(Offset.Rotate(orientation()));
+			Func<int> zOffset = () =>
+			{
+				var tmpOffset = offset();
+				return tmpOffset.Y + tmpOffset.Z + 1;
+			};
+
+			yield return new SpriteActorPreview(anim, offset, zOffset, p, rs.Scale);
 		}
 	}
 
-	public class WithParachute : UpgradableTrait<WithParachuteInfo>, IRender
+	public class WithParachute : UpgradableTrait<WithParachuteInfo>, ITick, IRender
 	{
 		readonly Animation shadow;
 		readonly AnimationWithOffset anim;
@@ -133,6 +148,12 @@ namespace OpenRA.Mods.Common.Traits
 				anim.Animation.PlayBackwardsThen(info.OpeningSequence, () => renderProlonged = false);
 		}
 
+		public void Tick(Actor self)
+		{
+			if (shadow != null)
+				shadow.Tick();
+		}
+
 		public IEnumerable<IRenderable> Render(Actor self, WorldRenderer wr)
 		{
 			if (info.ShadowImage == null)
@@ -147,8 +168,8 @@ namespace OpenRA.Mods.Common.Traits
 			if (self.World.FogObscures(self))
 				return Enumerable.Empty<IRenderable>();
 
-			shadow.Tick();
-			var pos = self.CenterPosition - new WVec(0, 0, self.CenterPosition.Z);
+			var dat = self.World.Map.DistanceAboveTerrain(self.CenterPosition);
+			var pos = self.CenterPosition - new WVec(0, 0, dat.Length);
 			var palette = wr.Palette(info.ShadowPalette);
 			return new IRenderable[] { new SpriteRenderable(shadow.Image, pos, info.ShadowOffset, info.ShadowZOffset, palette, 1, true) };
 		}

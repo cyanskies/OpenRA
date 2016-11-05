@@ -4,11 +4,11 @@ TRAN:
 		Cost: 750
 	Tooltip:
 		Name: Chinook Transport
-		Description: Fast Infantry Transport Helicopter.\n  Unarmed
 	Buildable:
 		BuildPaletteOrder: 10
 		Prerequisites: hpad
 		Queue: Aircraft.GDI, Aircraft.Nod
+		Description: Fast Infantry Transport Helicopter.\n  Unarmed
 	Aircraft:
 		LandWhenIdle: true
 		TurnSpeed: 5
@@ -23,12 +23,26 @@ TRAN:
 	RevealsShroud:
 		Range: 10c0
 		Type: CenterPosition
-	WithSpriteRotorOverlay@PRIMARY:
+	WithIdleOverlay@ROTOR1AIR:
+		Offset: 597,0,85
+		Sequence: rotor
+		UpgradeTypes: airborne
+		UpgradeMinEnabledLevel: 1
+	WithIdleOverlay@ROTOR1GROUND:
+		Offset: 597,0,85
+		Sequence: slow-rotor
+		UpgradeTypes: airborne
+		UpgradeMaxEnabledLevel: 0
+	WithIdleOverlay@ROTOR2AIR:
 		Offset: -597,0,171
 		Sequence: rotor2
-		GroundSequence: slow-rotor2
-	WithSpriteRotorOverlay@SECONDARY:
-		Offset: 597,0,85
+		UpgradeTypes: airborne
+		UpgradeMinEnabledLevel: 1
+	WithIdleOverlay@ROTOR2GROUND:
+		Offset: -597,0,171
+		Sequence: slow-rotor2
+		UpgradeTypes: airborne
+		UpgradeMaxEnabledLevel: 0
 	Cargo:
 		Types: Infantry
 		MaxWeight: 10
@@ -47,11 +61,11 @@ HELI:
 		Cost: 1200
 	Tooltip:
 		Name: Apache Longbow
-		Description: Helicopter Gunship with Chainguns.\n  Strong vs Infantry, Light Vehicles and\n  Aircraft\n  Weak vs Tanks
 	Buildable:
 		BuildPaletteOrder: 20
 		Prerequisites: hpad, anyhq, ~techlevel.medium
 		Queue: Aircraft.Nod
+		Description: Helicopter Gunship with Chainguns.\n  Strong vs Infantry, Light Vehicles and\n  Aircraft\n  Weak vs Tanks
 	Aircraft:
 		RearmBuildings: hpad
 		InitialFacing: 224
@@ -81,8 +95,16 @@ HELI:
 		SelfReloads: true
 		ReloadCount: 10
 		SelfReloadDelay: 200
-	WithSpriteRotorOverlay:
+	WithIdleOverlay@ROTORAIR:
 		Offset: 0,0,85
+		Sequence: rotor
+		UpgradeTypes: airborne
+		UpgradeMinEnabledLevel: 1
+	WithIdleOverlay@ROTORGROUND:
+		Offset: 0,0,85
+		Sequence: slow-rotor
+		UpgradeTypes: airborne
+		UpgradeMaxEnabledLevel: 0
 	WithMuzzleOverlay:
 	SpawnActorOnDeath:
 		Actor: HELI.Husk
@@ -99,11 +121,11 @@ ORCA:
 		Cost: 1200
 	Tooltip:
 		Name: Orca
-		Description: Helicopter Gunship with AG Missiles.\n  Strong vs Buildings, Tanks\n  Weak vs Infantry
 	Buildable:
 		BuildPaletteOrder: 20
 		Prerequisites: hpad, anyhq, ~techlevel.medium
 		Queue: Aircraft.GDI
+		Description: Helicopter Gunship with AG Missiles.\n  Strong vs Buildings, Tanks\n  Weak vs Infantry
 	Aircraft:
 		RearmBuildings: hpad
 		InitialFacing: 224
@@ -143,11 +165,8 @@ ORCA:
 
 C17:
 	Inherits: ^Plane
-	ParaDrop:
-		LZRange: 1
 	Tooltip:
 		Name: Supply Aircraft
-		Description: Drops vehicle reinforcements on Airstrips
 	Valued:
 		Cost: 2000
 	Aircraft:
@@ -180,12 +199,13 @@ C17:
 	Contrail@4:
 		Offset: -261,650,0
 		TrailLength: 15
+	Buildable:
+		Description: Drops vehicle reinforcements on Airstrips
 
 A10:
 	Inherits: ^Plane
 	Tooltip:
 		Name: A10 Bomber
-		Description: Used to deliver air strikes.
 	Valued:
 		Cost: 2000
 	Aircraft:
@@ -216,6 +236,8 @@ A10:
 	Contrail@2:
 		Offset: -640,-171,0
 		TrailLength: 15
+	Buildable:
+		Description: Used to deliver air strikes.
 
 TRAN.Husk:
 	Inherits: ^HelicopterHusk
@@ -225,12 +247,14 @@ TRAN.Husk:
 		TurnSpeed: 5
 		Speed: 140
 	RevealsShroud:
-		Range: 8c0
+		Range: 10c0
 		Type: CenterPosition
-	WithSpriteRotorOverlay@PRIMARY:
-		Offset: -597,0,171
-	WithSpriteRotorOverlay@SECONDARY:
+	WithIdleOverlay@ROTOR1:
 		Offset: 597,0,85
+		Sequence: rotor
+	WithIdleOverlay@ROTOR2:
+		Offset: -597,0,171
+		Sequence: rotor2
 	RenderSprites:
 		Image: tran
 
@@ -244,8 +268,9 @@ HELI.Husk:
 	RevealsShroud:
 		Range: 10c0
 		Type: CenterPosition
-	WithSpriteRotorOverlay:
+	WithIdleOverlay:
 		Offset: 0,0,85
+		Sequence: rotor
 	RenderSprites:
 		Image: heli
 

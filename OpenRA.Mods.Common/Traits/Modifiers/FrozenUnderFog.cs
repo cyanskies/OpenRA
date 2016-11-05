@@ -20,8 +20,6 @@ namespace OpenRA.Mods.Common.Traits
 	[Desc("This actor will remain visible (but not updated visually) under fog, once discovered.")]
 	public class FrozenUnderFogInfo : ITraitInfo, Requires<BuildingInfo>, IDefaultVisibilityInfo
 	{
-		public readonly bool StartsRevealed = false;
-
 		[Desc("Players with these stances can always see the actor.")]
 		public readonly Stance AlwaysVisibleStances = Stance.Ally;
 
@@ -55,9 +53,11 @@ namespace OpenRA.Mods.Common.Traits
 
 			var map = init.World.Map;
 
-			// Spawned actors (e.g. building husks) shouldn't be revealed
-			startsRevealed = info.StartsRevealed && !init.Contains<ParentActorInit>();
-			var footprintCells = FootprintUtils.Tiles(init.Self).ToList();
+			// Explore map-placed actors if the "Explore Map" option is enabled
+			var shroudInfo = init.World.Map.Rules.Actors["player"].TraitInfo<ShroudInfo>();
+			var exploredMap = init.World.LobbyInfo.GlobalSettings.OptionOrDefault("explored", shroudInfo.ExploredMapEnabled);
+			startsRevealed = exploredMap && init.Contains<SpawnedByMapInit>() && !init.Contains<HiddenUnderFogInit>();
+			var footprintCells = FootprintUtils.FrozenUnderFogTiles(init.Self).ToList();
 			footprint = footprintCells.SelectMany(c => map.ProjectedCellsCovering(c.ToMPos(map))).ToArray();
 		}
 
@@ -142,4 +142,6 @@ namespace OpenRA.Mods.Common.Traits
 			return IsVisible(self, self.World.RenderPlayer) || isRendering ? r : SpriteRenderable.None;
 		}
 	}
+
+	public class HiddenUnderFogInit : IActorInit { }
 }

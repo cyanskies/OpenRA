@@ -19,14 +19,14 @@ namespace OpenRA.Mods.Common.UtilityCommands
 {
 	class UpgradeModCommand : IUtilityCommand
 	{
-		public string Name { get { return "--upgrade-mod"; } }
+		string IUtilityCommand.Name { get { return "--upgrade-mod"; } }
 
-		public bool ValidateArguments(string[] args)
+		bool IUtilityCommand.ValidateArguments(string[] args)
 		{
 			return args.Length >= 2;
 		}
 
-		delegate void UpgradeAction(int engineVersion, ref List<MiniYamlNode> nodes, MiniYamlNode parent, int depth);
+		delegate void UpgradeAction(ModData modData, int engineVersion, ref List<MiniYamlNode> nodes, MiniYamlNode parent, int depth);
 
 		void ProcessYaml(string type, IEnumerable<string> files, ModData modData, int engineDate, UpgradeAction processFile)
 		{
@@ -42,8 +42,8 @@ namespace OpenRA.Mods.Common.UtilityCommands
 					continue;
 				}
 
-				var yaml = MiniYaml.FromStream(package.GetStream(name));
-				processFile(engineDate, ref yaml, null, 0);
+				var yaml = MiniYaml.FromStream(package.GetStream(name), name);
+				processFile(modData, engineDate, ref yaml, null, 0);
 
 				// Generate the on-disk path
 				var path = Path.Combine(package.Name, name);
@@ -53,10 +53,10 @@ namespace OpenRA.Mods.Common.UtilityCommands
 		}
 
 		[Desc("CURRENTENGINE", "Upgrade mod rules to the latest engine version.")]
-		public void Run(ModData modData, string[] args)
+		void IUtilityCommand.Run(Utility utility, string[] args)
 		{
 			// HACK: The engine code assumes that Game.modData is set.
-			Game.ModData = modData;
+			var modData = Game.ModData = utility.ModData;
 			modData.MapCache.LoadMaps();
 
 			var engineDate = Exts.ParseIntegerInvariant(args[1]);
@@ -69,6 +69,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 
 			ProcessYaml("Rules", modData.Manifest.Rules, modData, engineDate, UpgradeRules.UpgradeActorRules);
 			ProcessYaml("Weapons", modData.Manifest.Weapons, modData, engineDate, UpgradeRules.UpgradeWeaponRules);
+			ProcessYaml("Sequences", modData.Manifest.Sequences, modData, engineDate, UpgradeRules.UpgradeSequences);
 			ProcessYaml("Tilesets", modData.Manifest.TileSets, modData, engineDate, UpgradeRules.UpgradeTileset);
 			ProcessYaml("Cursors", modData.Manifest.Cursors, modData, engineDate, UpgradeRules.UpgradeCursors);
 			ProcessYaml("Chrome Metrics", modData.Manifest.ChromeMetrics, modData, engineDate, UpgradeRules.UpgradeChromeMetrics);

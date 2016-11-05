@@ -19,6 +19,8 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
+	public enum AttackDelayType { Preparation, Attack }
+
 	public interface IQuantizeBodyOrientationInfo : ITraitInfo
 	{
 		int QuantizedBodyFacings(ActorInfo ai, SequenceProvider sequenceProvider, string race);
@@ -34,12 +36,72 @@ namespace OpenRA.Mods.Common.Traits
 		IEnumerable<IRenderable> Render(WorldRenderer wr, World w, ActorInfo ai, WPos centerPosition);
 	}
 
-	public interface INotifyAttack { void Attacking(Actor self, Target target, Armament a, Barrel barrel); }
+	[RequireExplicitImplementation]
+	public interface INotifySold
+	{
+		void Selling(Actor self);
+		void Sold(Actor self);
+	}
+
+	public interface IDemolishableInfo : ITraitInfoInterface { bool IsValidTarget(ActorInfo actorInfo, Actor saboteur); }
+	public interface IDemolishable
+	{
+		void Demolish(Actor self, Actor saboteur);
+		bool IsValidTarget(Actor self, Actor saboteur);
+	}
+
+	[RequireExplicitImplementation]
+	public interface ICrushable
+	{
+		bool CrushableBy(Actor self, Actor crusher, HashSet<string> crushClasses);
+	}
+
+	[RequireExplicitImplementation]
+	public interface INotifyCrushed
+	{
+		void OnCrush(Actor self, Actor crusher, HashSet<string> crushClasses);
+		void WarnCrush(Actor self, Actor crusher, HashSet<string> crushClasses);
+	}
+
+	[RequireExplicitImplementation]
+	public interface INotifyAttack
+	{
+		void Attacking(Actor self, Target target, Armament a, Barrel barrel);
+		void PreparingAttack(Actor self, Target target, Armament a, Barrel barrel);
+	}
+
+	[RequireExplicitImplementation]
+	public interface INotifyBuildComplete { void BuildingComplete(Actor self); }
+
+	[RequireExplicitImplementation]
+	public interface INotifyDamageStateChanged { void DamageStateChanged(Actor self, AttackInfo e); }
+
+	public interface INotifyBuildingPlaced { void BuildingPlaced(Actor self); }
+	public interface INotifyRepair { void Repairing(Actor self, Actor target); }
+	public interface INotifyBurstComplete { void FiredBurst(Actor self, Target target, Armament a); }
 	public interface INotifyCharging { void Charging(Actor self, Target target); }
 	public interface INotifyChat { bool OnChat(string from, string message); }
+	public interface INotifyProduction { void UnitProduced(Actor self, Actor other, CPos exit); }
+	public interface INotifyOtherProduction { void UnitProducedByOther(Actor self, Actor producer, Actor produced); }
+	public interface INotifyDelivery { void IncomingDelivery(Actor self); void Delivered(Actor self); }
+	public interface INotifyDocking { void Docked(Actor self, Actor harvester); void Undocked(Actor self, Actor harvester); }
 	public interface INotifyParachuteLanded { void OnLanded(Actor ignore); }
+	public interface INotifyCapture { void OnCapture(Actor self, Actor captor, Player oldOwner, Player newOwner); }
+	public interface INotifyDiscovered { void OnDiscovered(Actor self, Player discoverer, bool playNotification); }
 	public interface IRenderActorPreviewInfo : ITraitInfo { IEnumerable<IActorPreview> RenderPreview(ActorPreviewInitializer init); }
 	public interface ICruiseAltitudeInfo : ITraitInfo { WDist GetCruiseAltitude(); }
+
+	[RequireExplicitImplementation]
+	public interface INotifyInfiltrated { void Infiltrated(Actor self, Actor infiltrator); }
+
+	[RequireExplicitImplementation]
+	public interface INotifyBlockingMove { void OnNotifyBlockingMove(Actor self, Actor blocking); }
+
+	[RequireExplicitImplementation]
+	public interface INotifyPassengerEntered { void OnPassengerEntered(Actor self, Actor passenger); }
+
+	[RequireExplicitImplementation]
+	public interface INotifyPassengerExited { void OnPassengerExited(Actor self, Actor passenger); }
 
 	public interface IUpgradable
 	{
@@ -103,9 +165,9 @@ namespace OpenRA.Mods.Common.Traits
 	public interface ICallForTransport
 	{
 		WDist MinimumDistance { get; }
-		bool WantsTransport { get; set; }
+		bool WantsTransport { get; }
 		void MovementCancelled(Actor self);
-		void RequestTransport(CPos destination, Activity afterLandActivity);
+		void RequestTransport(Actor self, CPos destination, Activity afterLandActivity);
 	}
 
 	public interface IDeathActorInitModifier
@@ -126,9 +188,11 @@ namespace OpenRA.Mods.Common.Traits
 	}
 
 	[RequireExplicitImplementation]
-	interface INotifyInsufficientFunds
+	public interface IActorPreviewInitModifier
 	{
-		void InsufficientFunds(Actor self);
-		void SufficientFunds(Actor self);
+		void ModifyActorPreviewInit(Actor self, TypeDictionary inits);
 	}
+
+	[RequireExplicitImplementation]
+	public interface INotifyRearm { void Rearming(Actor host, Actor other); }
 }

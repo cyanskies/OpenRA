@@ -77,7 +77,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			if (om.Connection.ConnectionState == ConnectionState.NotConnected)
 			{
 				// Show connection failed dialog
-				CloseWindow();
+				Ui.CloseWindow();
 
 				Action onConnect = () =>
 				{
@@ -98,17 +98,6 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					{ "onRetry", onRetry }
 				});
 			}
-		}
-
-		void CloseWindow()
-		{
-			orderManager.AddChatLine -= AddChatLine;
-			Game.LobbyInfoChanged -= UpdateCurrentMap;
-			Game.LobbyInfoChanged -= UpdatePlayerList;
-			Game.BeforeGameStart -= OnGameStart;
-			Game.ConnectionStateChanged -= ConnectionStateChanged;
-
-			Ui.CloseWindow();
 		}
 
 		[ObjectCreator.UseCtor]
@@ -328,7 +317,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			{
 				startGameButton.IsDisabled = () => configurationDisabled() || Map.Status != MapStatus.Available ||
 					orderManager.LobbyInfo.Slots.Any(sl => sl.Value.Required && orderManager.LobbyInfo.ClientInSlot(sl.Key) == null) ||
-					(orderManager.LobbyInfo.GlobalSettings.DisableSingleplayer && orderManager.LobbyInfo.IsSinglePlayer);
+					(!orderManager.LobbyInfo.GlobalSettings.EnableSingleplayer && orderManager.LobbyInfo.IsSinglePlayer);
 
 				startGameButton.OnClick = () =>
 				{
@@ -347,278 +336,101 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			forceStartBin.Get<ButtonWidget>("CANCEL_BUTTON").OnClick = () => panel = PanelType.Players;
 
 			// Options panel
-			var allowCheats = optionsBin.GetOrNull<CheckboxWidget>("ALLOWCHEATS_CHECKBOX");
-			if (allowCheats != null)
+			var optionCheckboxes = new Dictionary<string, string>()
 			{
-				var cheatsLocked = new CachedTransform<MapPreview, bool>(
-					map => map.Rules.Actors["player"].TraitInfo<DeveloperModeInfo>().Locked);
+				{ "EXPLORED_MAP_CHECKBOX", "explored" },
+				{ "CRATES_CHECKBOX", "crates" },
+				{ "SHORTGAME_CHECKBOX", "shortgame" },
+				{ "FOG_CHECKBOX", "fog" },
+				{ "ALLYBUILDRADIUS_CHECKBOX", "allybuild" },
+				{ "ALLOWCHEATS_CHECKBOX", "cheats" },
+				{ "CREEPS_CHECKBOX", "creeps" },
+			};
 
-				allowCheats.IsChecked = () => orderManager.LobbyInfo.GlobalSettings.AllowCheats;
-				allowCheats.IsDisabled = () => configurationDisabled() || cheatsLocked.Update(Map);
-				allowCheats.OnClick = () => orderManager.IssueOrder(Order.Command(
-						"allowcheats {0}".F(!orderManager.LobbyInfo.GlobalSettings.AllowCheats)));
-			}
-
-			var crates = optionsBin.GetOrNull<CheckboxWidget>("CRATES_CHECKBOX");
-			if (crates != null)
+			foreach (var kv in optionCheckboxes)
 			{
-				var cratesLocked = new CachedTransform<MapPreview, bool>(map =>
+				var checkbox = optionsBin.GetOrNull<CheckboxWidget>(kv.Key);
+				if (checkbox != null)
 				{
-					var crateSpawner = map.Rules.Actors["world"].TraitInfoOrDefault<CrateSpawnerInfo>();
-					return crateSpawner == null || crateSpawner.Locked;
-				});
+					var option = new CachedTransform<Session.Global, Session.LobbyOptionState>(
+						gs => gs.LobbyOptions[kv.Value]);
 
-				crates.IsChecked = () => orderManager.LobbyInfo.GlobalSettings.Crates;
-				crates.IsDisabled = () => configurationDisabled() || cratesLocked.Update(Map);
-				crates.OnClick = () => orderManager.IssueOrder(Order.Command(
-					"crates {0}".F(!orderManager.LobbyInfo.GlobalSettings.Crates)));
+					var visible = new CachedTransform<Session.Global, bool>(
+						gs => gs.LobbyOptions.ContainsKey(kv.Value));
+
+					checkbox.IsVisible = () => visible.Update(orderManager.LobbyInfo.GlobalSettings);
+					checkbox.IsChecked = () => option.Update(orderManager.LobbyInfo.GlobalSettings).Enabled;
+					checkbox.IsDisabled = () => configurationDisabled() ||
+						option.Update(orderManager.LobbyInfo.GlobalSettings).Locked;
+					checkbox.OnClick = () => orderManager.IssueOrder(Order.Command(
+						"option {0} {1}".F(kv.Value, !option.Update(orderManager.LobbyInfo.GlobalSettings).Enabled)));
+				}
 			}
 
-			var creeps = optionsBin.GetOrNull<CheckboxWidget>("CREEPS_CHECKBOX");
-			if (creeps != null)
+			var optionDropdowns = new Dictionary<string, string>()
 			{
-				var creepsLocked = new CachedTransform<MapPreview, bool>(map =>
+				{ "TECHLEVEL", "techlevel" },
+				{ "STARTINGUNITS", "startingunits" },
+				{ "STARTINGCASH", "startingcash" },
+				{ "DIFFICULTY", "difficulty" },
+				{ "GAMESPEED", "gamespeed" }
+			};
+
+			var allOptions = new CachedTransform<MapPreview, LobbyOption[]>(
+				map => map.Rules.Actors["player"].TraitInfos<ILobbyOptions>()
+					.Concat(map.Rules.Actors["world"].TraitInfos<ILobbyOptions>())
+					.SelectMany(t => t.LobbyOptions(map.Rules))
+					.ToArray());
+
+			foreach (var kv in optionDropdowns)
+			{
+				var dropdown = optionsBin.GetOrNull<DropDownButtonWidget>(kv.Key + "_DROPDOWNBUTTON");
+				if (dropdown != null)
 				{
-					var mapCreeps = map.Rules.Actors["world"].TraitInfoOrDefault<MapCreepsInfo>();
-					return mapCreeps == null || mapCreeps.Locked;
-				});
+					var optionValue = new CachedTransform<Session.Global, Session.LobbyOptionState>(
+						gs => gs.LobbyOptions[kv.Value]);
 
-				creeps.IsChecked = () => orderManager.LobbyInfo.GlobalSettings.Creeps;
-				creeps.IsDisabled = () => configurationDisabled() || creepsLocked.Update(Map);
-				creeps.OnClick = () => orderManager.IssueOrder(Order.Command(
-					"creeps {0}".F(!orderManager.LobbyInfo.GlobalSettings.Creeps)));
-			}
+					var option = new CachedTransform<MapPreview, LobbyOption>(
+						map => allOptions.Update(map).FirstOrDefault(o => o.Id == kv.Value));
 
-			var allybuildradius = optionsBin.GetOrNull<CheckboxWidget>("ALLYBUILDRADIUS_CHECKBOX");
-			if (allybuildradius != null)
-			{
-				var allyBuildRadiusLocked = new CachedTransform<MapPreview, bool>(map =>
-				{
-					var mapBuildRadius = map.Rules.Actors["world"].TraitInfoOrDefault<MapBuildRadiusInfo>();
-					return mapBuildRadius == null || mapBuildRadius.AllyBuildRadiusLocked;
-				});
-
-				allybuildradius.IsChecked = () => orderManager.LobbyInfo.GlobalSettings.AllyBuildRadius;
-				allybuildradius.IsDisabled = () => configurationDisabled() || allyBuildRadiusLocked.Update(Map);
-				allybuildradius.OnClick = () => orderManager.IssueOrder(Order.Command(
-					"allybuildradius {0}".F(!orderManager.LobbyInfo.GlobalSettings.AllyBuildRadius)));
-			}
-
-			var shortGame = optionsBin.GetOrNull<CheckboxWidget>("SHORTGAME_CHECKBOX");
-			if (shortGame != null)
-			{
-				var shortGameLocked = new CachedTransform<MapPreview, bool>(
-					map => map.Rules.Actors["world"].TraitInfo<MapOptionsInfo>().ShortGameLocked);
-
-				shortGame.IsChecked = () => orderManager.LobbyInfo.GlobalSettings.ShortGame;
-				shortGame.IsDisabled = () => configurationDisabled() || shortGameLocked.Update(Map);
-				shortGame.OnClick = () => orderManager.IssueOrder(Order.Command(
-					"shortgame {0}".F(!orderManager.LobbyInfo.GlobalSettings.ShortGame)));
-			}
-
-			var difficulty = optionsBin.GetOrNull<DropDownButtonWidget>("DIFFICULTY_DROPDOWNBUTTON");
-			if (difficulty != null)
-			{
-				var mapOptions = new CachedTransform<MapPreview, MapOptionsInfo>(
-					map => map.Rules.Actors["world"].TraitInfo<MapOptionsInfo>());
-
-				difficulty.IsVisible = () => Map.RulesLoaded && mapOptions.Update(Map).Difficulties.Any();
-				difficulty.IsDisabled = () => configurationDisabled() || mapOptions.Update(Map).DifficultyLocked;
-				difficulty.GetText = () => orderManager.LobbyInfo.GlobalSettings.Difficulty;
-				difficulty.OnMouseDown = _ =>
-				{
-					var options = mapOptions.Update(Map).Difficulties.Select(d => new DropDownOption
+					var getOptionLabel = new CachedTransform<string, string>(id =>
 					{
-						Title = d,
-						IsSelected = () => orderManager.LobbyInfo.GlobalSettings.Difficulty == d,
-						OnClick = () => orderManager.IssueOrder(Order.Command("difficulty {0}".F(d)))
-					});
-					Func<DropDownOption, ScrollItemWidget, ScrollItemWidget> setupItem = (option, template) =>
-					{
-						var item = ScrollItemWidget.Setup(template, option.IsSelected, option.OnClick);
-						item.Get<LabelWidget>("LABEL").GetText = () => option.Title;
-						return item;
-					};
-					difficulty.ShowDropDown("LABEL_DROPDOWN_TEMPLATE", options.Count() * 30, options, setupItem);
-				};
+						string value;
+						if (id == null || !option.Update(Map).Values.TryGetValue(id, out value))
+							return "Not Available";
 
-				optionsBin.Get<LabelWidget>("DIFFICULTY_DESC").IsVisible = difficulty.IsVisible;
-			}
-
-			var startingUnits = optionsBin.GetOrNull<DropDownButtonWidget>("STARTINGUNITS_DROPDOWNBUTTON");
-			if (startingUnits != null)
-			{
-				var startUnitsInfos = new CachedTransform<MapPreview, IEnumerable<MPStartUnitsInfo>>(
-					map => map.Rules.Actors["world"].TraitInfos<MPStartUnitsInfo>());
-
-				var startUnitsLocked = new CachedTransform<MapPreview, bool>(map =>
-				{
-					var spawnUnitsInfo = map.Rules.Actors["world"].TraitInfoOrDefault<SpawnMPUnitsInfo>();
-					return spawnUnitsInfo == null || spawnUnitsInfo.Locked;
-				});
-
-				Func<string, string> className = c =>
-				{
-					var selectedClass = startUnitsInfos.Update(Map).Where(s => s.Class == c).Select(u => u.ClassName).FirstOrDefault();
-					return selectedClass != null ? selectedClass : c;
-				};
-
-				startingUnits.IsDisabled = () => configurationDisabled() || startUnitsLocked.Update(Map);
-				startingUnits.GetText = () => !Map.RulesLoaded || startUnitsLocked.Update(Map) ?
-					"Not Available" : className(orderManager.LobbyInfo.GlobalSettings.StartingUnitsClass);
-				startingUnits.OnMouseDown = _ =>
-				{
-					var classes = startUnitsInfos.Update(Map).Select(a => a.Class).Distinct();
-					var options = classes.Select(c => new DropDownOption
-					{
-						Title = className(c),
-						IsSelected = () => orderManager.LobbyInfo.GlobalSettings.StartingUnitsClass == c,
-						OnClick = () => orderManager.IssueOrder(Order.Command("startingunits {0}".F(c)))
+						return value;
 					});
 
-					Func<DropDownOption, ScrollItemWidget, ScrollItemWidget> setupItem = (option, template) =>
+					dropdown.GetText = () => getOptionLabel.Update(optionValue.Update(orderManager.LobbyInfo.GlobalSettings).Value);
+					dropdown.IsVisible = () => option.Update(Map) != null;
+					dropdown.IsDisabled = () => configurationDisabled() ||
+						optionValue.Update(orderManager.LobbyInfo.GlobalSettings).Locked;
+
+					dropdown.OnMouseDown = _ =>
 					{
-						var item = ScrollItemWidget.Setup(template, option.IsSelected, option.OnClick);
-						item.Get<LabelWidget>("LABEL").GetText = () => option.Title;
-						return item;
+						Func<KeyValuePair<string, string>, ScrollItemWidget, ScrollItemWidget> setupItem = (c, template) =>
+						{
+							Func<bool> isSelected = () => optionValue.Update(orderManager.LobbyInfo.GlobalSettings).Value == c.Key;
+							Action onClick = () => orderManager.IssueOrder(Order.Command("option {0} {1}".F(kv.Value, c.Key)));
+
+							var item = ScrollItemWidget.Setup(template, isSelected, onClick);
+							item.Get<LabelWidget>("LABEL").GetText = () => c.Value;
+							return item;
+						};
+
+						var options = option.Update(Map).Values;
+						dropdown.ShowDropDown("LABEL_DROPDOWN_TEMPLATE", options.Count() * 30, options, setupItem);
 					};
 
-					startingUnits.ShowDropDown("LABEL_DROPDOWN_TEMPLATE", options.Count() * 30, options, setupItem);
-				};
-
-				optionsBin.Get<LabelWidget>("STARTINGUNITS_DESC").IsVisible = startingUnits.IsVisible;
-			}
-
-			var startingCash = optionsBin.GetOrNull<DropDownButtonWidget>("STARTINGCASH_DROPDOWNBUTTON");
-			if (startingCash != null)
-			{
-				var playerResources = new CachedTransform<MapPreview, PlayerResourcesInfo>(
-					map => map.Rules.Actors["player"].TraitInfo<PlayerResourcesInfo>());
-
-				startingCash.IsDisabled = () => configurationDisabled() || playerResources.Update(Map).DefaultCashLocked;
-				startingCash.GetText = () => !Map.RulesLoaded || playerResources.Update(Map).DefaultCashLocked ?
-					"Not Available" : "${0}".F(orderManager.LobbyInfo.GlobalSettings.StartingCash);
-				startingCash.OnMouseDown = _ =>
-				{
-					var options = playerResources.Update(Map).SelectableCash.Select(c => new DropDownOption
-					{
-						Title = "${0}".F(c),
-						IsSelected = () => orderManager.LobbyInfo.GlobalSettings.StartingCash == c,
-						OnClick = () => orderManager.IssueOrder(Order.Command("startingcash {0}".F(c)))
-					});
-
-					Func<DropDownOption, ScrollItemWidget, ScrollItemWidget> setupItem = (option, template) =>
-					{
-						var item = ScrollItemWidget.Setup(template, option.IsSelected, option.OnClick);
-						item.Get<LabelWidget>("LABEL").GetText = () => option.Title;
-						return item;
-					};
-
-					startingCash.ShowDropDown("LABEL_DROPDOWN_TEMPLATE", options.Count() * 30, options, setupItem);
-				};
-			}
-
-			var techLevel = optionsBin.GetOrNull<DropDownButtonWidget>("TECHLEVEL_DROPDOWNBUTTON");
-			if (techLevel != null)
-			{
-				var mapOptions = new CachedTransform<MapPreview, MapOptionsInfo>(
-					map => map.Rules.Actors["world"].TraitInfo<MapOptionsInfo>());
-
-				var techLevels = new CachedTransform<MapPreview, List<ProvidesTechPrerequisiteInfo>>(
-					map => map.Rules.Actors["player"].TraitInfos<ProvidesTechPrerequisiteInfo>().ToList());
-
-				techLevel.IsVisible = () => Map.RulesLoaded && techLevels.Update(Map).Any();
-				var techLevelDescription = optionsBin.GetOrNull<LabelWidget>("TECHLEVEL_DESC");
-				if (techLevelDescription != null)
-					techLevelDescription.IsVisible = techLevel.IsVisible;
-
-				techLevel.IsDisabled = () => configurationDisabled() || mapOptions.Update(Map).TechLevelLocked;
-				techLevel.GetText = () => !Map.RulesLoaded || mapOptions.Update(Map).TechLevelLocked ?
-					"Not Available" : "{0}".F(orderManager.LobbyInfo.GlobalSettings.TechLevel);
-				techLevel.OnMouseDown = _ =>
-				{
-					var options = techLevels.Update(Map).Select(c => new DropDownOption
-					{
-						Title = "{0}".F(c.Name),
-						IsSelected = () => orderManager.LobbyInfo.GlobalSettings.TechLevel == c.Name,
-						OnClick = () => orderManager.IssueOrder(Order.Command("techlevel {0}".F(c.Name)))
-					});
-
-					Func<DropDownOption, ScrollItemWidget, ScrollItemWidget> setupItem = (option, template) =>
-					{
-						var item = ScrollItemWidget.Setup(template, option.IsSelected, option.OnClick);
-						item.Get<LabelWidget>("LABEL").GetText = () => option.Title;
-						return item;
-					};
-
-					techLevel.ShowDropDown("LABEL_DROPDOWN_TEMPLATE", options.Count() * 30, options, setupItem);
-				};
-			}
-
-			var gameSpeed = optionsBin.GetOrNull<DropDownButtonWidget>("GAMESPEED_DROPDOWNBUTTON");
-			if (gameSpeed != null)
-			{
-				var speeds = modData.Manifest.Get<GameSpeeds>().Speeds;
-
-				gameSpeed.IsDisabled = configurationDisabled;
-				gameSpeed.GetText = () =>
-				{
-					if (Map.Status != MapStatus.Available)
-						return "Not Available";
-
-					GameSpeed speed;
-					if (!speeds.TryGetValue(orderManager.LobbyInfo.GlobalSettings.GameSpeedType, out speed))
-						return "Unknown";
-
-					return speed.Name;
-				};
-
-				gameSpeed.OnMouseDown = _ =>
-				{
-					var options = speeds.Select(s => new DropDownOption
-					{
-						Title = s.Value.Name,
-						IsSelected = () => orderManager.LobbyInfo.GlobalSettings.GameSpeedType == s.Key,
-						OnClick = () => orderManager.IssueOrder(Order.Command("gamespeed {0}".F(s.Key)))
-					});
-
-					Func<DropDownOption, ScrollItemWidget, ScrollItemWidget> setupItem = (option, template) =>
-					{
-						var item = ScrollItemWidget.Setup(template, option.IsSelected, option.OnClick);
-						item.Get<LabelWidget>("LABEL").GetText = () => option.Title;
-						return item;
-					};
-
-					gameSpeed.ShowDropDown("LABEL_DROPDOWN_TEMPLATE", options.Count() * 30, options, setupItem);
-				};
-			}
-
-			var exploredMap = optionsBin.GetOrNull<CheckboxWidget>("EXPLORED_MAP_CHECKBOX");
-			if (exploredMap != null)
-			{
-				var exploredMapLocked = new CachedTransform<MapPreview, bool>(
-					map => map.Rules.Actors["player"].TraitInfo<ShroudInfo>().ExploredMapLocked);
-
-				exploredMap.IsChecked = () => !orderManager.LobbyInfo.GlobalSettings.Shroud;
-				exploredMap.IsDisabled = () => configurationDisabled() || exploredMapLocked.Update(Map);
-				exploredMap.OnClick = () => orderManager.IssueOrder(Order.Command(
-					"shroud {0}".F(!orderManager.LobbyInfo.GlobalSettings.Shroud)));
-			}
-
-			var enableFog = optionsBin.GetOrNull<CheckboxWidget>("FOG_CHECKBOX");
-			if (enableFog != null)
-			{
-				var fogLocked = new CachedTransform<MapPreview, bool>(
-					map => map.Rules.Actors["player"].TraitInfo<ShroudInfo>().FogLocked);
-
-				enableFog.IsChecked = () => orderManager.LobbyInfo.GlobalSettings.Fog;
-				enableFog.IsDisabled = () => configurationDisabled() || fogLocked.Update(Map);
-				enableFog.OnClick = () => orderManager.IssueOrder(Order.Command(
-					"fog {0}".F(!orderManager.LobbyInfo.GlobalSettings.Fog)));
+					var label = optionsBin.GetOrNull(kv.Key + "_DESC");
+					if (label != null)
+						label.IsVisible = () => option.Update(Map) != null;
+				}
 			}
 
 			var disconnectButton = lobby.Get<ButtonWidget>("DISCONNECT_BUTTON");
-			disconnectButton.OnClick = () => { CloseWindow(); onExit(); };
+			disconnectButton.OnClick = () => { Ui.CloseWindow(); onExit(); };
 
 			if (skirmishMode)
 				disconnectButton.Text = "Back";
@@ -716,6 +528,22 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				addBotOnMapLoad = true;
 		}
 
+		bool disposed;
+		protected override void Dispose(bool disposing)
+		{
+			if (disposing && !disposed)
+			{
+				disposed = true;
+				orderManager.AddChatLine -= AddChatLine;
+				Game.LobbyInfoChanged -= UpdateCurrentMap;
+				Game.LobbyInfoChanged -= UpdatePlayerList;
+				Game.BeforeGameStart -= OnGameStart;
+				Game.ConnectionStateChanged -= ConnectionStateChanged;
+			}
+
+			base.Dispose(disposing);
+		}
+
 		public override void Tick()
 		{
 			var newMessages = Game.GlobalChat.History.Count(m => m.Type == ChatMessageType.Message);
@@ -781,7 +609,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			new Task(() =>
 			{
 				// Force map rules to be loaded on this background thread
-				var unused = map.Rules;
+				map.PreloadRules();
 			}).Start();
 		}
 
@@ -799,7 +627,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				new Task(() =>
 				{
 					// Force map rules to be loaded on this background thread
-					var unused = currentMap.Rules;
+					currentMap.PreloadRules();
 					Game.RunAfterTick(() =>
 					{
 						// Map may have changed in the meantime
@@ -880,7 +708,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					LobbyUtils.SetupEditableFactionWidget(template, slot, client, orderManager, factions);
 					LobbyUtils.SetupEditableTeamWidget(template, slot, client, orderManager, Map);
 					LobbyUtils.SetupEditableSpawnWidget(template, slot, client, orderManager, Map);
-					LobbyUtils.SetupEditableReadyWidget(template, slot, client, orderManager, Map, !Map.RulesLoaded || Map.InvalidCustomRules);
+					LobbyUtils.SetupEditableReadyWidget(template, slot, client, orderManager, Map);
 				}
 				else
 				{
@@ -926,6 +754,9 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						template = editableSpectatorTemplate.Clone();
 
 					LobbyUtils.SetupEditableNameWidget(template, null, c, orderManager);
+
+					if (client.IsAdmin)
+						LobbyUtils.SetupEditableReadyWidget(template, null, client, orderManager, Map);
 				}
 				else
 				{
@@ -936,6 +767,9 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					LobbyUtils.SetupNameWidget(template, null, client);
 					LobbyUtils.SetupKickWidget(template, null, client, orderManager, lobby,
 						() => panel = PanelType.Kick, () => panel = PanelType.Players);
+
+					if (client.IsAdmin)
+						LobbyUtils.SetupReadyWidget(template, null, client);
 				}
 
 				LobbyUtils.SetupClientWidget(template, c, orderManager, true);
@@ -985,7 +819,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		void OnGameStart()
 		{
-			CloseWindow();
+			Ui.CloseWindow();
 			onStart();
 		}
 

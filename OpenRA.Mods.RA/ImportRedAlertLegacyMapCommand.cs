@@ -25,13 +25,11 @@ namespace OpenRA.Mods.RA.UtilityCommands
 		// TODO: 128x128 is probably not true for "mega maps" from the expansions.
 		public ImportRedAlertLegacyMapCommand() : base(128) { }
 
-		public string Name { get { return "--import-ra-map"; } }
+		string IUtilityCommand.Name { get { return "--import-ra-map"; } }
+		bool IUtilityCommand.ValidateArguments(string[] args) { return ValidateArguments(args); }
 
 		[Desc("FILENAME", "Convert a legacy Red Alert INI/MPR map to the OpenRA format.")]
-		public override void Run(ModData modData, string[] args)
-		{
-			base.Run(modData, args);
-		}
+		void IUtilityCommand.Run(Utility utility, string[] args) { Run(utility, args); }
 
 		public override void ValidateMapFormat(int format)
 		{
@@ -124,6 +122,17 @@ namespace OpenRA.Mods.RA.UtilityCommands
 		public override string ParseTreeActor(string input)
 		{
 			return input.ToLowerInvariant();
+		}
+
+		public override CPos ParseActorLocation(string input, int loc)
+		{
+			var newLoc = new CPos(loc % MapSize, loc / MapSize);
+			var vectorDown = new CVec(0, 1);
+
+			if (input == "tsla" || input == "agun" || input == "gap" || input == "apwr" || input == "iron")
+				newLoc += vectorDown;
+
+			return newLoc;
 		}
 
 		public override void LoadPlayer(IniFile file, string section)
@@ -227,6 +236,14 @@ namespace OpenRA.Mods.RA.UtilityCommands
 		{
 			base.ReadActors(file);
 			LoadActors(file, "SHIPS", Players, MapSize, Map);
+		}
+
+		public override void SaveWaypoint(int waypointNumber, ActorReference waypointReference)
+		{
+			var waypointName = "waypoint" + waypointNumber;
+			if (waypointNumber == 98)
+				waypointName = "DefaultCameraPosition";
+			Map.ActorDefinitions.Add(new MiniYamlNode(waypointName, waypointReference.Save()));
 		}
 	}
 }

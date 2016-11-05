@@ -19,27 +19,49 @@ namespace OpenRA.Mods.Common.Activities
 	public class Repair : Activity
 	{
 		readonly RepairsUnitsInfo repairsUnits;
-		readonly Actor host;
+		readonly Target host;
+		readonly WDist closeEnough;
+
 		int remainingTicks;
 		Health health;
 		bool played = false;
 
-		public Repair(Actor host)
+		public Repair(Actor self, Actor host)
+			: this(self, host, WDist.Zero) { }
+
+		public Repair(Actor self, Actor host, WDist closeEnough)
 		{
-			this.host = host;
+			this.host = Target.FromActor(host);
+			this.closeEnough = closeEnough;
 			repairsUnits = host.Info.TraitInfo<RepairsUnitsInfo>();
+			health = self.TraitOrDefault<Health>();
 		}
 
 		public override Activity Tick(Actor self)
 		{
-			if (IsCanceled) return NextActivity;
-			if (host == null || !host.IsInWorld) return NextActivity;
+			if (IsCanceled)
+			{
+				if (remainingTicks-- == 0)
+					return NextActivity;
 
-			health = self.TraitOrDefault<Health>();
-			if (health == null) return NextActivity;
+				return this;
+			}
+
+			if (host.Type == TargetType.Invalid || health == null)
+				return NextActivity;
+
+			if (closeEnough.LengthSquared > 0 && !host.IsInRange(self.CenterPosition, closeEnough))
+				return NextActivity;
 
 			if (health.DamageState == DamageState.Undamaged)
 			{
+				if (host.Actor.Owner != self.Owner)
+				{
+					var exp = host.Actor.Owner.PlayerActor.TraitOrDefault<PlayerExperience>();
+					if (exp != null)
+						exp.GiveExperience(repairsUnits.PlayerExperience);
+				}
+
 				Game.Sound.PlayNotification(self.World.Map.Rules, self.Owner, "Speech", repairsUnits.FinishRepairingNotification, self.Owner.Faction.InternalName);
 				return NextActivity;
 			}
@@ -56,16 +78,16 @@ namespace OpenRA.Mods.Common.Activities
 					Game.Sound.PlayNotification(self.World.Map.Rules, self.Owner, "Speech", repairsUnits.StartRepairingNotification, self.Owner.Faction.InternalName);
 				}
 
-				if (!self.Owner.PlayerActor.Trait<PlayerResources>().TakeCash(cost))
+				if (!self.Owner.PlayerActor.Trait<PlayerResources>().TakeCash(cost, true))
 				{
 					remainingTicks = 1;
 					return this;
 				}
 
-				self.InflictDamage(self, -hpToRepair, null);
+				self.InflictDamage(self, new Damage(-hpToRepair));
 
-				foreach (var depot in host.TraitsImplementing<INotifyRepair>())
-					depot.Repairing(self, host);
+				foreach (var depot in host.Actor.TraitsImplementing<INotifyRepair>())
+					depot.Repairing(host.Actor, self);
 
 				remainingTicks = repairsUnits.Interval;
 			}

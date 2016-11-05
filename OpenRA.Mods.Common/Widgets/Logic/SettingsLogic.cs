@@ -23,11 +23,10 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		enum PanelType { Display, Audio, Input, Advanced }
 
 		static readonly string OriginalSoundDevice;
-		static readonly string OriginalSoundEngine;
 		static readonly WindowMode OriginalGraphicsMode;
-		static readonly string OriginalGraphicsRenderer;
 		static readonly int2 OriginalGraphicsWindowedSize;
 		static readonly int2 OriginalGraphicsFullscreenSize;
+		static readonly bool OriginalServerDiscoverNatDevices;
 
 		readonly Dictionary<PanelType, Action> leavePanelActions = new Dictionary<PanelType, Action>();
 		readonly Dictionary<PanelType, Action> resetPanelActions = new Dictionary<PanelType, Action>();
@@ -43,11 +42,10 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		{
 			var original = Game.Settings;
 			OriginalSoundDevice = original.Sound.Device;
-			OriginalSoundEngine = original.Sound.Engine;
 			OriginalGraphicsMode = original.Graphics.Mode;
-			OriginalGraphicsRenderer = original.Graphics.Renderer;
 			OriginalGraphicsWindowedSize = original.Graphics.WindowedSize;
 			OriginalGraphicsFullscreenSize = original.Graphics.FullscreenSize;
+			OriginalServerDiscoverNatDevices = original.Server.DiscoverNatDevices;
 		}
 
 		[ObjectCreator.UseCtor]
@@ -72,12 +70,11 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 				Action closeAndExit = () => { Ui.CloseWindow(); onExit(); };
 				if (OriginalSoundDevice != current.Sound.Device ||
-					OriginalSoundEngine != current.Sound.Engine ||
 					OriginalGraphicsMode != current.Graphics.Mode ||
-					OriginalGraphicsRenderer != current.Graphics.Renderer ||
 					OriginalGraphicsWindowedSize != current.Graphics.WindowedSize ||
-					OriginalGraphicsFullscreenSize != current.Graphics.FullscreenSize)
-					ConfirmationDialogs.PromptConfirmAction(
+					OriginalGraphicsFullscreenSize != current.Graphics.FullscreenSize ||
+					OriginalServerDiscoverNatDevices != current.Server.DiscoverNatDevices)
+					ConfirmationDialogs.ButtonPrompt(
 						title: "Restart Now?",
 						text: "Some changes will not be applied until\nthe game is restarted. Restart now?",
 						onConfirm: Game.Restart,
@@ -168,7 +165,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var windowModeDropdown = panel.Get<DropDownButtonWidget>("MODE_DROPDOWN");
 			windowModeDropdown.OnMouseDown = _ => ShowWindowModeDropdown(windowModeDropdown, ds);
 			windowModeDropdown.GetText = () => ds.Mode == WindowMode.Windowed ?
-				"Windowed" : ds.Mode == WindowMode.Fullscreen ? "Fullscreen" : "Pseudo-Fullscreen";
+				"Windowed" : ds.Mode == WindowMode.Fullscreen ? "Fullscreen (Legacy)" : "Fullscreen";
 
 			var statusBarsDropDown = panel.Get<DropDownButtonWidget>("STATUS_BAR_DROPDOWN");
 			statusBarsDropDown.OnMouseDown = _ => ShowStatusBarsDropdown(statusBarsDropDown, gs);
@@ -336,7 +333,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			}
 
 			var devices = Game.Sound.AvailableDevices();
-			soundDevice = devices.FirstOrDefault(d => d.Engine == ss.Engine && d.Device == ss.Device) ?? devices.First();
+			soundDevice = devices.FirstOrDefault(d => d.Device == ss.Device) ?? devices.First();
 
 			var audioDeviceDropdown = panel.Get<DropDownButtonWidget>("AUDIO_DEVICE");
 			audioDeviceDropdown.OnMouseDown = _ => ShowAudioDeviceDropdown(audioDeviceDropdown, devices);
@@ -349,7 +346,6 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			return () =>
 			{
 				ss.Device = soundDevice.Device;
-				ss.Engine = soundDevice.Engine;
 			};
 		}
 
@@ -365,7 +361,6 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				ss.CashTicks = dss.CashTicks;
 				ss.Mute = dss.Mute;
 				ss.Device = dss.Device;
-				ss.Engine = dss.Engine;
 
 				panel.Get<SliderWidget>("SOUND_VOLUME").Value = ss.SoundVolume;
 				Game.Sound.SoundVolume = ss.SoundVolume;
@@ -402,9 +397,13 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				MakeMouseFocusSettingsLive();
 			};
 
-			var mouseScrollDropdown = panel.Get<DropDownButtonWidget>("MOUSE_SCROLL");
-			mouseScrollDropdown.OnMouseDown = _ => ShowMouseScrollDropdown(mouseScrollDropdown, gs);
-			mouseScrollDropdown.GetText = () => gs.MouseScroll.ToString();
+			var middleMouseScrollDropdown = panel.Get<DropDownButtonWidget>("MIDDLE_MOUSE_SCROLL");
+			middleMouseScrollDropdown.OnMouseDown = _ => ShowMouseScrollDropdown(middleMouseScrollDropdown, gs, false);
+			middleMouseScrollDropdown.GetText = () => gs.MiddleMouseScroll.ToString();
+
+			var rightMouseScrollDropdown = panel.Get<DropDownButtonWidget>("RIGHT_MOUSE_SCROLL");
+			rightMouseScrollDropdown.OnMouseDown = _ => ShowMouseScrollDropdown(rightMouseScrollDropdown, gs, true);
+			rightMouseScrollDropdown.GetText = () => gs.RightMouseScroll.ToString();
 
 			var zoomModifierDropdown = panel.Get<DropDownButtonWidget>("ZOOM_MODIFIER");
 			zoomModifierDropdown.OnMouseDown = _ => ShowZoomModifierDropdown(zoomModifierDropdown, gs);
@@ -446,16 +445,43 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					{ "CycleStatusBarsKey", "Cycle status bars display" },
 					{ "TogglePixelDoubleKey", "Toggle pixel doubling" },
 					{ "ToggleMuteKey", "Toggle audio mute" },
-					{ "TogglePlayerStanceColorsKey", "Toggle player stance colors" },
-
-					{ "MapScrollUp", "Map scroll up" },
-					{ "MapScrollDown", "Map scroll down" },
-					{ "MapScrollLeft", "Map scroll left" },
-					{ "MapScrollRight", "Map scroll right" }
+					{ "TogglePlayerStanceColorsKey", "Toggle player stance colors" }
 				};
 
 				var header = ScrollItemWidget.Setup(hotkeyHeader, returnTrue, doNothing);
 				header.Get<LabelWidget>("LABEL").GetText = () => "Game Commands";
+				hotkeyList.AddChild(header);
+
+				foreach (var kv in hotkeys)
+					BindHotkeyPref(kv, ks, globalTemplate, hotkeyList);
+			}
+
+			// Viewport
+			{
+				var hotkeys = new Dictionary<string, string>()
+				{
+					{ "MapScrollUp", "Scroll up" },
+					{ "MapScrollDown", "Scroll down" },
+					{ "MapScrollLeft", "Scroll left" },
+					{ "MapScrollRight", "Scroll right" },
+
+					{ "MapPushTop", "Jump to top edge" },
+					{ "MapPushBottom", "Jump to bottom edge" },
+					{ "MapPushLeftEdge", "Jump to left edge" },
+					{ "MapPushRightEdge", "Jump to right edge" },
+
+					{ "ViewPortBookmarkSaveSlot1", "Record bookmark #1" },
+					{ "ViewPortBookmarkUseSlot1", "Jump to bookmark #1" },
+					{ "ViewPortBookmarkSaveSlot2", "Record bookmark #2" },
+					{ "ViewPortBookmarkUseSlot2", "Jump to bookmark #2" },
+					{ "ViewPortBookmarkSaveSlot3", "Record bookmark #3" },
+					{ "ViewPortBookmarkUseSlot3", "Jump to bookmark #3" },
+					{ "ViewPortBookmarkSaveSlot4", "Record bookmark #4" },
+					{ "ViewPortBookmarkUseSlot4", "Jump to bookmark #4" }
+				};
+
+				var header = ScrollItemWidget.Setup(hotkeyHeader, returnTrue, doNothing);
+				header.Get<LabelWidget>("LABEL").GetText = () => "Viewport Commands";
 				hotkeyList.AddChild(header);
 
 				foreach (var kv in hotkeys)
@@ -560,6 +586,24 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					BindHotkeyPref(kv, ks, developerTemplate, hotkeyList);
 			}
 
+			// Music
+			{
+				var hotkeys = new Dictionary<string, string>()
+				{
+					{ "NextTrack", "Next" },
+					{ "PreviousTrack", "Previous" },
+					{ "StopMusic", "Stop" },
+					{ "PauseMusic", "Pause or Resume" }
+				};
+
+				var header = ScrollItemWidget.Setup(hotkeyHeader, returnTrue, doNothing);
+				header.Get<LabelWidget>("LABEL").GetText = () => "Music commands";
+				hotkeyList.AddChild(header);
+
+				foreach (var kv in hotkeys)
+					BindHotkeyPref(kv, ks, developerTemplate, hotkeyList);
+			}
+
 			return () => { };
 		}
 
@@ -573,7 +617,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			return () =>
 			{
 				gs.UseClassicMouseStyle = dgs.UseClassicMouseStyle;
-				gs.MouseScroll = dgs.MouseScroll;
+				gs.MiddleMouseScroll = dgs.MiddleMouseScroll;
+				gs.RightMouseScroll = dgs.RightMouseScroll;
 				gs.LockMouseWindow = dgs.LockMouseWindow;
 				gs.ViewportEdgeScroll = dgs.ViewportEdgeScroll;
 				gs.ViewportEdgeScrollStep = dgs.ViewportEdgeScrollStep;
@@ -602,7 +647,6 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var gs = Game.Settings.Game;
 
 			BindCheckboxPref(panel, "NAT_DISCOVERY", ss, "DiscoverNatDevices");
-			BindCheckboxPref(panel, "VERBOSE_NAT_CHECKBOX", ss, "VerboseNatDiscovery");
 			BindCheckboxPref(panel, "PERFTEXT_CHECKBOX", ds, "PerfText");
 			BindCheckboxPref(panel, "PERFGRAPH_CHECKBOX", ds, "PerfGraph");
 			BindCheckboxPref(panel, "CHECKUNSYNCED_CHECKBOX", ds, "SanityCheckUnsyncedCode");
@@ -624,7 +668,6 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			return () =>
 			{
 				ss.DiscoverNatDevices = dss.DiscoverNatDevices;
-				ss.VerboseNatDiscovery = dss.VerboseNatDiscovery;
 				ds.PerfText = dds.PerfText;
 				ds.PerfGraph = dds.PerfGraph;
 				ds.SanityCheckUnsyncedCode = dds.SanityCheckUnsyncedCode;
@@ -633,7 +676,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			};
 		}
 
-		static bool ShowMouseScrollDropdown(DropDownButtonWidget dropdown, GameSettings s)
+		static bool ShowMouseScrollDropdown(DropDownButtonWidget dropdown, GameSettings s, bool rightMouse)
 		{
 			var options = new Dictionary<string, MouseScrollType>()
 			{
@@ -646,8 +689,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			Func<string, ScrollItemWidget, ScrollItemWidget> setupItem = (o, itemTemplate) =>
 			{
 				var item = ScrollItemWidget.Setup(itemTemplate,
-					() => s.MouseScroll == options[o],
-					() => s.MouseScroll = options[o]);
+					() => (rightMouse ? s.RightMouseScroll : s.MiddleMouseScroll) == options[o],
+					() => { if (rightMouse) s.RightMouseScroll = options[o]; else s.MiddleMouseScroll = options[o]; });
 				item.Get<LabelWidget>("LABEL").GetText = () => o;
 				return item;
 			};
@@ -705,8 +748,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		{
 			var options = new Dictionary<string, WindowMode>()
 			{
-				{ "Pseudo-Fullscreen", WindowMode.PseudoFullscreen },
-				{ "Fullscreen", WindowMode.Fullscreen },
+				{ "Fullscreen", WindowMode.PseudoFullscreen },
+				{ "Fullscreen (Legacy)", WindowMode.Fullscreen },
 				{ "Windowed", WindowMode.Windowed },
 			};
 

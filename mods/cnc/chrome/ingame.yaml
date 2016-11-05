@@ -1,6 +1,10 @@
 Container@INGAME_ROOT:
 	Logic: LoadIngamePlayerOrObserverUILogic
 	Children:
+		Container@MUSICBUTTONS:
+			Logic: MusicControllerLogic
+			Children:
+				LogicKeyListener@MUSICCONTROLLER_KEYHANDLER:
 		Container@WORLD_ROOT:
 			Logic: LoadIngamePerfLogic
 			Children:
@@ -36,6 +40,9 @@ Container@INGAME_ROOT:
 					Width: WINDOW_RIGHT
 					Height: WINDOW_BOTTOM
 					TooltipContainer: TOOLTIP_CONTAINER
+				WorldCommand:
+					Width: WINDOW_RIGHT
+					Height: WINDOW_BOTTOM
 				Container@PLAYER_ROOT:
 		Container@MENU_ROOT:
 		TooltipContainer@TOOLTIP_CONTAINER:
@@ -216,17 +223,19 @@ Container@OBSERVER_WIDGETS:
 					X: 40
 					Width: 60
 					Height: 25
+					Shadow: True
 				Label@NOFLAG_LABEL:
 					X: 5
 					Width: PARENT_RIGHT
 					Height: 25
+					Shadow: True
 
 Container@PLAYER_WIDGETS:
 	Children:
 		LogicKeyListener@CONTROLGROUP_KEYHANDLER:
 			Logic: ControlGroupLogic
 		LogicTicker@SIDEBAR_TICKER:
-		WorldCommand:
+		UnitCommand:
 			Width: WINDOW_RIGHT
 			Height: WINDOW_BOTTOM
 		Container@SUPPORT_POWERS:

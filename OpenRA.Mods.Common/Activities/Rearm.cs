@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Activities;
 using OpenRA.Mods.Common.Traits;
+using OpenRA.Mods.Common.Traits.Render;
 
 namespace OpenRA.Mods.Common.Activities
 {
@@ -58,13 +59,12 @@ namespace OpenRA.Mods.Common.Activities
 				if (!pool.GiveAmmo())
 					continue;
 
-				var wsb = hostBuilding.Trait<WithSpriteBody>();
-				if (wsb.DefaultAnimation.HasSequence("active"))
-					wsb.PlayCustomAnimation(hostBuilding, "active", () => wsb.CancelCustomAnimation(hostBuilding));
+				foreach (var host in hostBuilding.TraitsImplementing<INotifyRearm>())
+					host.Rearming(hostBuilding, self);
 
 				var sound = pool.Info.RearmSound;
 				if (sound != null)
-					Game.Sound.Play(sound, self.CenterPosition);
+					Game.Sound.PlayToPlayer(self.Owner, sound, self.CenterPosition);
 
 				ammoPoolsReloadTimes[pool] = pool.Info.ReloadDelay;
 			}

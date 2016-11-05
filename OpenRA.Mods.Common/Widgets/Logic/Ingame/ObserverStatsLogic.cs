@@ -171,6 +171,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					(p.PlayerActor.TraitOrDefault<PlayerStatistics>() ?? new PlayerStatistics(p.PlayerActor)).EarnedSamples.Select(s => (float)s)));
 
 			playerStatsPanel.AddChild(template);
+			playerStatsPanel.ScrollToTop();
 		}
 
 		void DisplayStats(Func<Player, ScrollItemWidget> createItem)
@@ -200,8 +201,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			var stats = player.PlayerActor.TraitOrDefault<PlayerStatistics>();
 			if (stats == null) return template;
-			template.Get<LabelWidget>("KILLS_COST").GetText = () => "$" + stats.KillsCost;
-			template.Get<LabelWidget>("DEATHS_COST").GetText = () => "$" + stats.DeathsCost;
+			template.Get<LabelWidget>("ASSETS_DESTROYED").GetText = () => "$" + stats.KillsCost;
+			template.Get<LabelWidget>("ASSETS_LOST").GetText = () => "$" + stats.DeathsCost;
 			template.Get<LabelWidget>("UNITS_KILLED").GetText = () => stats.UnitsKilled.ToString();
 			template.Get<LabelWidget>("UNITS_DEAD").GetText = () => stats.UnitsDead.ToString();
 			template.Get<LabelWidget>("BUILDINGS_KILLED").GetText = () => stats.BuildingsKilled.ToString();
@@ -234,7 +235,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var stats = player.PlayerActor.TraitOrDefault<PlayerStatistics>();
 			if (stats == null) return template;
 
-			template.Get<LabelWidget>("CASH").GetText = () => "$" + (res.DisplayCash + res.DisplayResources);
+			template.Get<LabelWidget>("CASH").GetText = () => "$" + (res.Cash + res.Resources);
 			template.Get<LabelWidget>("EARNED_MIN").GetText = () => AverageEarnedPerMinute(res.Earned);
 			template.Get<LabelWidget>("EARNED_THIS_MIN").GetText = () => "$" + stats.EarnedThisMinute;
 			template.Get<LabelWidget>("EARNED").GetText = () => "$" + res.Earned;
@@ -259,7 +260,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			LobbyUtils.AddPlayerFlagAndName(template, player);
 
 			var res = player.PlayerActor.Trait<PlayerResources>();
-			template.Get<LabelWidget>("CASH").GetText = () => "$" + (res.DisplayCash + res.DisplayResources);
+			template.Get<LabelWidget>("CASH").GetText = () => "$" + (res.Cash + res.Resources);
 			template.Get<LabelWidget>("EARNED_MIN").GetText = () => AverageEarnedPerMinute(res.Earned);
 
 			var powerRes = player.PlayerActor.Trait<PowerManager>();
@@ -271,7 +272,9 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			if (stats == null) return template;
 			template.Get<LabelWidget>("KILLS").GetText = () => (stats.UnitsKilled + stats.BuildingsKilled).ToString();
 			template.Get<LabelWidget>("DEATHS").GetText = () => (stats.UnitsDead + stats.BuildingsDead).ToString();
-			template.Get<LabelWidget>("KD_RATIO").GetText = () => KillDeathRatio(stats.UnitsKilled + stats.BuildingsKilled, stats.UnitsDead + stats.BuildingsDead);
+			template.Get<LabelWidget>("ASSETS_DESTROYED").GetText = () => "$" + stats.KillsCost;
+			template.Get<LabelWidget>("ASSETS_LOST").GetText = () => "$" + stats.DeathsCost;
+			template.Get<LabelWidget>("EXPERIENCE").GetText = () => stats.Experience.ToString();
 			template.Get<LabelWidget>("ACTIONS_MIN").GetText = () => AverageOrdersPerMinute(stats.OrderCount);
 
 			return template;

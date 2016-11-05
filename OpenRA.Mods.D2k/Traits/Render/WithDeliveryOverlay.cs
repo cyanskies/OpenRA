@@ -12,9 +12,10 @@
 using OpenRA.Effects;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Traits;
+using OpenRA.Mods.Common.Traits.Render;
 using OpenRA.Traits;
 
-namespace OpenRA.Mods.D2k.Traits
+namespace OpenRA.Mods.D2k.Traits.Render
 {
 	[Desc("Rendered when ProductionAirdrop is in progress.")]
 	public class WithDeliveryOverlayInfo : ITraitInfo, Requires<RenderSpritesInfo>, Requires<BodyOrientationInfo>
@@ -68,19 +69,19 @@ namespace OpenRA.Mods.D2k.Traits
 				anim.Animation.PlayThen(info.Sequence, PlayDeliveryOverlay);
 		}
 
-		public void BuildingComplete(Actor self)
+		void INotifyBuildComplete.BuildingComplete(Actor self)
 		{
 			self.World.AddFrameEndTask(w => w.Add(new DelayedAction(120, () =>
 				buildComplete = true)));
 		}
 
-		public void Sold(Actor self) { }
-		public void Selling(Actor self)
+		void INotifySold.Sold(Actor self) { }
+		void INotifySold.Selling(Actor self)
 		{
 			buildComplete = false;
 		}
 
-		public void IncomingDelivery(Actor self) { delivering = true; PlayDeliveryOverlay(); }
-		public void Delivered(Actor self) { delivering = false; }
+		void INotifyDelivery.IncomingDelivery(Actor self) { delivering = true; PlayDeliveryOverlay(); }
+		void INotifyDelivery.Delivered(Actor self) { delivering = false; }
 	}
 }

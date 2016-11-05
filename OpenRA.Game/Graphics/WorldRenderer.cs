@@ -13,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using OpenRA.Effects;
 using OpenRA.Traits;
 
 namespace OpenRA.Graphics
@@ -34,14 +35,18 @@ namespace OpenRA.Graphics
 		readonly TerrainRenderer terrainRenderer;
 		readonly Lazy<DeveloperMode> devTrait;
 		readonly Func<string, PaletteReference> createPaletteReference;
+		readonly bool enableDepthBuffer;
 
-		internal WorldRenderer(World world)
+		internal WorldRenderer(ModData modData, World world)
 		{
 			World = world;
 			TileSize = World.Map.Grid.TileSize;
 			Viewport = new Viewport(this, world.Map);
 
 			createPaletteReference = CreatePaletteReference;
+
+			var mapGrid = modData.Manifest.Get<MapGrid>();
+			enableDepthBuffer = mapGrid.EnableDepthBuffer;
 
 			foreach (var pal in world.TraitDict.ActorsWithTrait<ILoadsPalettes>())
 				pal.Trait.LoadPalettes(this);
@@ -106,9 +111,6 @@ namespace OpenRA.Graphics
 			worldRenderables = worldRenderables.Concat(World.Effects.SelectMany(e => e.Render(this)));
 			worldRenderables = worldRenderables.OrderBy(RenderableScreenZPositionComparisonKey);
 
-			if (World.OrderGenerator != null)
-				worldRenderables = worldRenderables.Concat(World.OrderGenerator.RenderAfterWorld(this, World));
-
 			Game.Renderer.WorldVoxelRenderer.BeginFrame();
 			var renderables = worldRenderables.Select(r => r.PrepareRender(this)).ToList();
 			Game.Renderer.WorldVoxelRenderer.EndFrame();
@@ -122,7 +124,11 @@ namespace OpenRA.Graphics
 				return;
 
 			if (devTrait.Value != null)
+			{
 				Game.Renderer.WorldSpriteRenderer.SetDepthPreviewEnabled(devTrait.Value.ShowDepthPreview);
+				Game.Renderer.WorldRgbaSpriteRenderer.SetDepthPreviewEnabled(devTrait.Value.ShowDepthPreview);
+				Game.Renderer.WorldRgbaColorRenderer.SetDepthPreviewEnabled(devTrait.Value.ShowDepthPreview);
+			}
 
 			RefreshPalette();
 
@@ -133,33 +139,56 @@ namespace OpenRA.Graphics
 			var bounds = Viewport.GetScissorBounds(World.Type != WorldType.Editor);
 			Game.Renderer.EnableScissor(bounds);
 
+			if (enableDepthBuffer)
+				Game.Renderer.Device.EnableDepthBuffer();
+
 			terrainRenderer.Draw(this, Viewport);
 			Game.Renderer.Flush();
 
 			for (var i = 0; i < renderables.Count; i++)
 				renderables[i].Render(this);
 
-			foreach (var a in World.ActorsWithTrait<IPostRender>())
+			if (enableDepthBuffer)
+				Game.Renderer.ClearDepthBuffer();
+
+			foreach (var a in World.ActorsWithTrait<IRenderAboveWorld>())
 				if (a.Actor.IsInWorld && !a.Actor.Disposed)
-					a.Trait.RenderAfterWorld(this, a.Actor);
+					a.Trait.RenderAboveWorld(a.Actor, this);
 
 			var renderShroud = World.RenderPlayer != null ? World.RenderPlayer.Shroud : null;
 
-			foreach (var a in World.ActorsWithTrait<IRenderShroud>())
-				a.Trait.RenderShroud(this, renderShroud);
+			if (enableDepthBuffer)
+				Game.Renderer.ClearDepthBuffer();
 
-			if (devTrait.Value != null && devTrait.Value.ShowDebugGeometry)
-				for (var i = 0; i < renderables.Count; i++)
-					renderables[i].RenderDebugGeometry(this);
+			foreach (var a in World.ActorsWithTrait<IRenderShroud>())
+				a.Trait.RenderShroud(renderShroud, this);
+
+			if (enableDepthBuffer)
+				Game.Renderer.Device.DisableDepthBuffer();
 
 			Game.Renderer.DisableScissor();
 
-			var overlayRenderables = World.Selection.Actors.Where(a => !a.Disposed)
-				.SelectMany(a => a.TraitsImplementing<IPostRenderSelection>())
-				.SelectMany(t => t.RenderAfterWorld(this));
+			var aboveShroud = World.ActorsWithTrait<IRenderAboveShroud>().Where(a => a.Actor.IsInWorld && !a.Actor.Disposed)
+				.SelectMany(a => a.Trait.RenderAboveShroud(a.Actor, this));
+
+			var aboveShroudSelected = World.Selection.Actors.Where(a => !a.Disposed)
+				.SelectMany(a => a.TraitsImplementing<IRenderAboveShroudWhenSelected>()
+					.SelectMany(t => t.RenderAboveShroud(a, this)));
+
+			var aboveShroudEffects = World.Effects.Select(e => e as IEffectAboveShroud)
+				.Where(e => e != null)
+				.SelectMany(e => e.RenderAboveShroud(this));
+
+			var aboveShroudOrderGenerator = SpriteRenderable.None;
+			if (World.OrderGenerator != null)
+				aboveShroudOrderGenerator = World.OrderGenerator.RenderAboveShroud(this, World);
 
 			Game.Renderer.WorldVoxelRenderer.BeginFrame();
-			var finalOverlayRenderables = overlayRenderables.Select(r => r.PrepareRender(this));
+			var finalOverlayRenderables = aboveShroud
+				.Concat(aboveShroudSelected)
+				.Concat(aboveShroudEffects)
+				.Concat(aboveShroudOrderGenerator)
+				.Select(r => r.PrepareRender(this));
 			Game.Renderer.WorldVoxelRenderer.EndFrame();
 
 			// HACK: Keep old grouping behaviour
@@ -168,30 +197,13 @@ namespace OpenRA.Graphics
 					r.Render(this);
 
 			if (devTrait.Value != null && devTrait.Value.ShowDebugGeometry)
+			{
+				for (var i = 0; i < renderables.Count; i++)
+					renderables[i].RenderDebugGeometry(this);
+
 				foreach (var g in finalOverlayRenderables.GroupBy(prs => prs.GetType()))
 					foreach (var r in g)
 						r.RenderDebugGeometry(this);
-
-			if (World.Type == WorldType.Regular)
-			{
-				foreach (var g in World.ActorsHavingTrait<Selectable>().Where(a => !a.Disposed
-					&& !World.FogObscures(a)
-					&& !World.Selection.Actors.Contains(a)))
-				{
-					if (Game.Settings.Game.StatusBars == StatusBarsType.Standard)
-						new SelectionBarsRenderable(g, false, false).Render(this);
-
-					if (Game.Settings.Game.StatusBars == StatusBarsType.AlwaysShow)
-						new SelectionBarsRenderable(g, true, true).Render(this);
-
-					if (Game.Settings.Game.StatusBars == StatusBarsType.DamageShow)
-					{
-						if (g.GetDamageState() != DamageState.Undamaged)
-							new SelectionBarsRenderable(g, true, true).Render(this);
-						else
-							new SelectionBarsRenderable(g, false, true).Render(this);
-					}
-				}
 			}
 
 			Game.Renderer.Flush();
@@ -209,6 +221,12 @@ namespace OpenRA.Graphics
 			return new float2(TileSize.Width * pos.X / 1024f, TileSize.Height * (pos.Y - pos.Z) / 1024f);
 		}
 
+		public float3 Screen3DPosition(WPos pos)
+		{
+			var z = ZPosition(pos, 0) * TileSize.Height / 1024f;
+			return new float3(TileSize.Width * pos.X / 1024f, TileSize.Height * (pos.Y - pos.Z) / 1024f, z);
+		}
+
 		public int2 ScreenPxPosition(WPos pos)
 		{
 			// Round to nearest pixel
@@ -216,28 +234,34 @@ namespace OpenRA.Graphics
 			return new int2((int)Math.Round(px.X), (int)Math.Round(px.Y));
 		}
 
-		// For scaling vectors to pixel sizes in the voxel renderer
-		public void ScreenVectorComponents(WVec vec, out float x, out float y, out float z)
+		public float3 Screen3DPxPosition(WPos pos)
 		{
-			x = TileSize.Width * vec.X / 1024f;
-			y = TileSize.Height * (vec.Y - vec.Z) / 1024f;
-			z = TileSize.Height * vec.Z / 1024f;
+			// Round to nearest pixel
+			var px = Screen3DPosition(pos);
+			return new float3((float)Math.Round(px.X), (float)Math.Round(px.Y), px.Z);
+		}
+
+		// For scaling vectors to pixel sizes in the voxel renderer
+		public float3 ScreenVectorComponents(WVec vec)
+		{
+			return new float3(
+				TileSize.Width * vec.X / 1024f,
+				TileSize.Height * (vec.Y - vec.Z) / 1024f,
+				TileSize.Height * vec.Z / 1024f);
 		}
 
 		// For scaling vectors to pixel sizes in the voxel renderer
 		public float[] ScreenVector(WVec vec)
 		{
-			float x, y, z;
-			ScreenVectorComponents(vec, out x, out y, out z);
-			return new[] { x, y, z, 1f };
+			var xyz = ScreenVectorComponents(vec);
+			return new[] { xyz.X, xyz.Y, xyz.Z, 1f };
 		}
 
 		public int2 ScreenPxOffset(WVec vec)
 		{
 			// Round to nearest pixel
-			float x, y, z;
-			ScreenVectorComponents(vec, out x, out y, out z);
-			return new int2((int)Math.Round(x), (int)Math.Round(y));
+			var xyz = ScreenVectorComponents(vec);
+			return new int2((int)Math.Round(xyz.X), (int)Math.Round(xyz.Y));
 		}
 
 		public float ScreenZPosition(WPos pos, int offset)

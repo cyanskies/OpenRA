@@ -35,39 +35,46 @@ namespace OpenRA.Mods.Common.UtilityCommands
 		public Map Map;
 		public List<string> Players = new List<string>();
 		public MapPlayers MapPlayers;
+		bool singlePlayer;
 		int spawnCount;
 
-		public bool ValidateArguments(string[] args)
+		protected bool ValidateArguments(string[] args)
 		{
 			return args.Length >= 2;
 		}
 
-		[Desc("FILENAME", "Convert a legacy INI/MPR map to the OpenRA format.")]
-		public virtual void Run(ModData modData, string[] args)
+		protected void Run(Utility utility, string[] args)
 		{
-			ModData = modData;
-
 			// HACK: The engine code assumes that Game.modData is set.
-			Game.ModData = modData;
+			Game.ModData = ModData = utility.ModData;
 
 			var filename = args[1];
-			using (var stream = modData.DefaultFileSystem.Open(filename))
+			using (var stream = File.OpenRead(filename))
 			{
 				var file = new IniFile(stream);
 				var basic = file.GetSection("Basic");
+
+				var player = basic.GetValue("Player", string.Empty);
+				if (!string.IsNullOrEmpty(player))
+					singlePlayer = !player.StartsWith("Multi");
+
 				var mapSection = file.GetSection("Map");
 
 				var format = GetMapFormatVersion(basic);
 				ValidateMapFormat(format);
 
-				var tileset = GetTileset(mapSection);
-				Map = new Map(modData, modData.DefaultTileSets[tileset], MapSize, MapSize)
+				// The original game isn't case sensitive, but we are.
+				var tileset = GetTileset(mapSection).ToUpperInvariant();
+				if (!ModData.DefaultTileSets.ContainsKey(tileset))
+					throw new InvalidDataException("Unknown tileset {0}".F(tileset));
+
+				Map = new Map(ModData, ModData.DefaultTileSets[tileset], MapSize, MapSize)
 				{
 					Title = basic.GetValue("Name", Path.GetFileNameWithoutExtension(filename)),
 					Author = "Westwood Studios",
 				};
 
-				Map.RequiresMod = modData.Manifest.Mod.Id;
+				Map.RequiresMod = ModData.Manifest.Id;
 
 				SetBounds(Map, mapSection);
 
@@ -95,9 +102,8 @@ namespace OpenRA.Mods.Common.UtilityCommands
 			Map.FixOpenAreas();
 
 			var dest = Path.GetFileNameWithoutExtension(args[1]) + ".oramap";
-			var package = new ZipFile(modData.ModFiles, dest, true);
 
-			Map.Save(package);
+			Map.Save(ZipFile.Create(dest, new Folder(".")));
 			Console.WriteLine(dest + " saved.");
 		}
 
@@ -168,7 +174,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 			var videos = new List<MiniYamlNode>();
 			foreach (var s in file.GetSection(section))
 			{
-				if (s.Value != "x" && s.Value != "<none>")
+				if (s.Value != "x" && s.Value != "X" && s.Value != "<none>")
 				{
 					switch (s.Key)
 					{
@@ -245,10 +251,10 @@ namespace OpenRA.Mods.Common.UtilityCommands
 				.Select(kv => Pair.New(Exts.ParseIntegerInvariant(kv.Key),
 					LocationFromMapOffset(Exts.ParseIntegerInvariant(kv.Value), MapSize)));
 
-			// Add waypoint actors
-			foreach (var kv in wps)
+			// Add waypoint actors skipping duplicate entries
+			foreach (var kv in wps.DistinctBy(location => location.Second))
 			{
-				if (kv.First <= 7)
+				if (!singlePlayer && kv.First <= 7)
 				{
 					var ar = new ActorReference("mpspawn")
 					{
@@ -267,9 +273,15 @@ namespace OpenRA.Mods.Common.UtilityCommands
 						new OwnerInit("Neutral")
 					};
 
-					Map.ActorDefinitions.Add(new MiniYamlNode("waypoint" + kv.First, ar.Save()));
+					SaveWaypoint(kv.First, ar);
 				}
 			}
+		}
+
+		public virtual void SaveWaypoint(int waypointNumber, ActorReference waypointReference)
+		{
+			var waypointName = "waypoint" + waypointNumber;
+			Map.ActorDefinitions.Add(new MiniYamlNode(waypointName, waypointReference.Save()));
 		}
 
 		void LoadSmudges(IniFile file, string section)
@@ -361,7 +373,12 @@ namespace OpenRA.Mods.Common.UtilityCommands
 				mapPlayers.Players[section] = pr;
 		}
 
-		public static void LoadActors(IniFile file, string section, List<string> players, int mapSize, Map map)
+		public virtual CPos ParseActorLocation(string input, int loc)
+		{
+			return new CPos(loc % MapSize, loc / MapSize);
+		}
+
+		public void LoadActors(IniFile file, string section, List<string> players, int mapSize, Map map)
 		{
 			foreach (var s in file.GetSection(section, true))
 			{
@@ -381,8 +398,10 @@ namespace OpenRA.Mods.Common.UtilityCommands
 					var health = Exts.ParseIntegerInvariant(parts[2]) * 100 / 256;
 					var facing = (section == "INFANTRY") ? Exts.ParseIntegerInvariant(parts[6]) : Exts.ParseIntegerInvariant(parts[4]);
 
-					var actor = new ActorReference(parts[1].ToLowerInvariant()) {
-						new LocationInit(new CPos(loc % mapSize, loc / mapSize)),
+					var actorType = parts[1].ToLowerInvariant();
+
+					var actor = new ActorReference(actorType) {
+						new LocationInit(ParseActorLocation(actorType, loc)),
 						new OwnerInit(parts[0]),
 					};
 
@@ -390,7 +409,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 					if (health != 100)
 						initDict.Add(new HealthInit(health));
 					if (facing != 0)
-						initDict.Add(new FacingInit(facing));
+						initDict.Add(new FacingInit(255 - facing));
 
 					if (section == "INFANTRY")
 						actor.Add(new SubCellInit(Exts.ParseIntegerInvariant(parts[4])));
@@ -420,9 +439,11 @@ namespace OpenRA.Mods.Common.UtilityCommands
 			foreach (var kv in terrain)
 			{
 				var loc = Exts.ParseIntegerInvariant(kv.Key);
-				var ar = new ActorReference(ParseTreeActor(kv.Value))
+				var treeActor = ParseTreeActor(kv.Value);
+
+				var ar = new ActorReference(treeActor)
 				{
-					new LocationInit(new CPos(loc % MapSize, loc / MapSize)),
+					new LocationInit(ParseActorLocation(treeActor, loc)),
 					new OwnerInit("Neutral")
 				};
 

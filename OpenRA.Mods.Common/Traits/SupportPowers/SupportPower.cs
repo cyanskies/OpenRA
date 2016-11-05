@@ -32,22 +32,37 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly string[] Prerequisites = { };
 
 		public readonly string BeginChargeSound = null;
+		public readonly string BeginChargeSpeechNotification = null;
 		public readonly string EndChargeSound = null;
+		public readonly string EndChargeSpeechNotification = null;
 		public readonly string SelectTargetSound = null;
+		public readonly string SelectTargetSpeechNotification = null;
 		public readonly string InsufficientPowerSound = null;
+		public readonly string InsufficientPowerSpeechNotification = null;
 		public readonly string LaunchSound = null;
+		public readonly string LaunchSpeechNotification = null;
 		public readonly string IncomingSound = null;
+		public readonly string IncomingSpeechNotification = null;
 
-		public readonly bool DisplayTimer = false;
+		[Desc("Defines to which players the timer is shown.")]
+		public readonly Stance DisplayTimerStances = Stance.None;
 
 		[Desc("Palette used for the icon.")]
 		[PaletteReference] public readonly string IconPalette = "chrome";
 
-		[Desc("Beacons are only supported on the Airstrike and Nuke powers")]
+		[Desc("Beacons are only supported on the Airstrike, Paratroopers, and Nuke powers")]
 		public readonly bool DisplayBeacon = false;
-		public readonly string BeaconPalettePrefix = "player";
-		public readonly string BeaconPoster = null;
+
+		public readonly bool BeaconPaletteIsPlayerPalette = true;
+		[PaletteReference("BeaconPaletteIsPlayerPalette")] public readonly string BeaconPalette = "player";
+
+		public readonly string BeaconImage = "beacon";
+		[SequenceReference("BeaconImage")] public readonly string BeaconPoster = null;
 		[PaletteReference] public readonly string BeaconPosterPalette = "chrome";
+		[SequenceReference("BeaconImage")] public readonly string ClockSequence = "clock";
+
+		[SequenceReference("BeaconImage")] public readonly string ArrowSequence = "arrow";
+		[SequenceReference("BeaconImage")] public readonly string CircleSequence = "circles";
 
 		public readonly bool DisplayRadarPing = false;
 
@@ -75,16 +90,22 @@ namespace OpenRA.Mods.Common.Traits
 		public virtual void Charging(Actor self, string key)
 		{
 			Game.Sound.PlayToPlayer(self.Owner, Info.BeginChargeSound);
+			Game.Sound.PlayNotification(self.World.Map.Rules, self.Owner, "Speech",
+				Info.BeginChargeSpeechNotification, self.Owner.Faction.InternalName);
 		}
 
 		public virtual void Charged(Actor self, string key)
 		{
 			Game.Sound.PlayToPlayer(self.Owner, Info.EndChargeSound);
+			Game.Sound.PlayNotification(self.World.Map.Rules, self.Owner, "Speech",
+				Info.EndChargeSpeechNotification, self.Owner.Faction.InternalName);
 		}
 
 		public virtual void SelectTarget(Actor self, string order, SupportPowerManager manager)
 		{
 			Game.Sound.PlayToPlayer(manager.Self.Owner, Info.SelectTargetSound);
+			Game.Sound.PlayNotification(self.World.Map.Rules, self.Owner, "Speech",
+				Info.SelectTargetSpeechNotification, self.Owner.Faction.InternalName);
 			self.World.OrderGenerator = new SelectGenericPowerTarget(order, manager, info.Cursor, MouseButton.Left);
 		}
 
@@ -98,6 +119,18 @@ namespace OpenRA.Mods.Common.Traits
 					order.Player.Color.RGB,
 					Info.RadarPingDuration);
 			}
+		}
+
+		public virtual void PlayLaunchSounds()
+		{
+			var renderPlayer = Self.World.RenderPlayer;
+			var isAllied = Self.Owner.IsAlliedWith(renderPlayer);
+			Game.Sound.Play(isAllied ? Info.LaunchSound : Info.IncomingSound);
+
+			// IsAlliedWith returns true if renderPlayer is null, so we are safe here.
+			var toPlayer = isAllied ? renderPlayer ?? Self.Owner : renderPlayer;
+			var speech = isAllied ? Info.LaunchSpeechNotification : Info.IncomingSpeechNotification;
+			Game.Sound.PlayNotification(Self.World.Map.Rules, toPlayer, "Speech", speech, toPlayer.Faction.InternalName);
 		}
 	}
 }

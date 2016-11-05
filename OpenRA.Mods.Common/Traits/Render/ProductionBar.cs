@@ -14,7 +14,7 @@ using System.Drawing;
 using System.Linq;
 using OpenRA.Traits;
 
-namespace OpenRA.Mods.Common.Traits
+namespace OpenRA.Mods.Common.Traits.Render
 {
 	[Desc("Visualizes the remaining build time of actor produced here.")]
 	class ProductionBarInfo : ITraitInfo, Requires<ProductionInfo>
@@ -81,6 +81,7 @@ namespace OpenRA.Mods.Common.Traits
 		}
 
 		Color ISelectionBar.GetColor() { return info.Color; }
+		bool ISelectionBar.DisplayWhenEmpty { get { return false; } }
 
 		public void OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
 		{

@@ -34,14 +34,21 @@ namespace OpenRA.Mods.Common.Graphics
 			var nodes = node.Value.ToDictionary();
 
 			MiniYaml defaults;
-			if (nodes.TryGetValue("Defaults", out defaults))
+			try
 			{
-				nodes.Remove("Defaults");
-				foreach (var n in nodes)
+				if (nodes.TryGetValue("Defaults", out defaults))
 				{
-					n.Value.Nodes = MiniYaml.Merge(new[] { defaults.Nodes, n.Value.Nodes });
-					n.Value.Value = n.Value.Value ?? defaults.Value;
+					nodes.Remove("Defaults");
+					foreach (var n in nodes)
+					{
+						n.Value.Nodes = MiniYaml.Merge(new[] { defaults.Nodes, n.Value.Nodes });
+						n.Value.Value = n.Value.Value ?? defaults.Value;
+					}
 				}
+			}
+			catch (Exception e)
+			{
+				throw new InvalidDataException("Error occurred while parsing {0}".F(node.Key), e);
 			}
 
 			foreach (var kvp in nodes)
@@ -79,6 +86,7 @@ namespace OpenRA.Mods.Common.Graphics
 		public int Facings { get; private set; }
 		public int Tick { get; private set; }
 		public int ZOffset { get; private set; }
+		public float ZRamp { get; private set; }
 		public int ShadowStart { get; private set; }
 		public int ShadowZOffset { get; private set; }
 		public int[] Frames { get; private set; }
@@ -119,6 +127,7 @@ namespace OpenRA.Mods.Common.Graphics
 				ShadowStart = LoadField(d, "ShadowStart", -1);
 				ShadowZOffset = LoadField(d, "ShadowZOffset", DefaultShadowSpriteZOffset).Length;
 				ZOffset = LoadField(d, "ZOffset", WDist.Zero).Length;
+				ZRamp = LoadField(d, "ZRamp", 0);
 				Tick = LoadField(d, "Tick", 40);
 				transpose = LoadField(d, "Transpose", false);
 				Frames = LoadField<int[]>(d, "Frames", null);
@@ -139,7 +148,7 @@ namespace OpenRA.Mods.Common.Graphics
 						"{0}: Sequence {1}.{2}: UseClassicFacingFudge is only valid for 32 facings"
 						.F(info.Nodes[0].Location, sequence, animation));
 
-				var offset = LoadField(d, "Offset", float2.Zero);
+				var offset = LoadField(d, "Offset", float3.Zero);
 				var blendMode = LoadField(d, "BlendMode", BlendMode.Alpha);
 
 				MiniYaml combine;
@@ -152,15 +161,15 @@ namespace OpenRA.Mods.Common.Graphics
 
 						// Allow per-sprite offset, flipping, start, and length
 						var subStart = LoadField(sd, "Start", 0);
-						var subOffset = LoadField(sd, "Offset", float2.Zero);
+						var subOffset = LoadField(sd, "Offset", float3.Zero);
 						var subFlipX = LoadField(sd, "FlipX", false);
 						var subFlipY = LoadField(sd, "FlipY", false);
 
 						var subSrc = GetSpriteSrc(modData, tileSet, sequence, animation, sub.Key, sd);
 						var subSprites = cache[subSrc].Select(
 							s => new Sprite(s.Sheet,
-								FlipRectangle(s.Bounds, subFlipX, subFlipY),
-								new float2(subFlipX ? -s.Offset.X : s.Offset.X, subFlipY ? -s.Offset.Y : s.Offset.Y) + subOffset + offset,
+								FlipRectangle(s.Bounds, subFlipX, subFlipY), ZRamp,
+								new float3(subFlipX ? -s.Offset.X : s.Offset.X, subFlipY ? -s.Offset.Y : s.Offset.Y, s.Offset.Z) + subOffset + offset,
 								s.Channel, blendMode));
 
 						var subLength = 0;
@@ -182,9 +191,46 @@ namespace OpenRA.Mods.Common.Graphics
 					var src = GetSpriteSrc(modData, tileSet, sequence, animation, info.Value, d);
 					sprites = cache[src].Select(
 						s => new Sprite(s.Sheet,
-							FlipRectangle(s.Bounds, flipX, flipY),
-							new float2(flipX ? -s.Offset.X : s.Offset.X, flipY ? -s.Offset.Y : s.Offset.Y) + offset,
+							FlipRectangle(s.Bounds, flipX, flipY), ZRamp,
+							new float3(flipX ? -s.Offset.X : s.Offset.X, flipY ? -s.Offset.Y : s.Offset.Y, s.Offset.Z) + offset,
 							s.Channel, blendMode)).ToArray();
+				}
+
+				var depthSprite = LoadField<string>(d, "DepthSprite", null);
+				if (!string.IsNullOrEmpty(depthSprite))
+				{
+					var depthSpriteFrame = LoadField(d, "DepthSpriteFrame", 0);
+					var depthOffset = LoadField(d, "DepthSpriteOffset", float2.Zero);
+					var depthSprites = cache.AllCached(depthSprite)
+						.Select(s => s[depthSpriteFrame]);
+
+					sprites = sprites.Select(s =>
+					{
+						// The depth sprite must live on the same sheet as the main sprite
+						var ds = depthSprites.FirstOrDefault(dss => dss.Sheet == s.Sheet);
+						if (ds == null)
+						{
+							// The sequence has probably overflowed onto a new sheet.
+							// Allocating a new depth sprite on this sheet will almost certainly work
+							ds = cache.Reload(depthSprite)[depthSpriteFrame];
+							depthSprites = cache.AllCached(depthSprite)
+								.Select(ss => ss[depthSpriteFrame]);
+
+							// If that doesn't work then we may be referencing a cached sprite from an earlier sheet
+							// TODO: We could try and reallocate the main sprite, but that requires more complicated code and a perf hit
+							// We'll only cross that bridge if this becomes a problem in reality
+							if (ds.Sheet != s.Sheet)
+								throw new SheetOverflowException("Cross-sheet depth sprite reference: {0}.{1}: {2}");
+						}
+
+						var cw = (ds.Bounds.Left + ds.Bounds.Right) / 2 + (int)(s.Offset.X + depthOffset.X);
+						var ch = (ds.Bounds.Top + ds.Bounds.Bottom) / 2 + (int)(s.Offset.Y + depthOffset.Y);
+						var w = s.Bounds.Width / 2;
+						var h = s.Bounds.Height / 2;
+
+						var r = Rectangle.FromLTRB(cw - w, ch - h, cw + w, ch + h);
+						return new SpriteWithSecondaryData(s, r, ds.Channel);
+					}).ToArray();
 				}
 
 				MiniYaml length;
@@ -206,6 +252,11 @@ namespace OpenRA.Mods.Common.Graphics
 				if (Length > Stride)
 					throw new InvalidOperationException(
 						"{0}: Sequence {1}.{2}: Length must be <= stride"
+						.F(info.Nodes[0].Location, sequence, animation));
+
+				if (Frames != null && Length > Frames.Length)
+					throw new InvalidOperationException(
+						"{0}: Sequence {1}.{2}: Length must be <= Frames.Length"
 						.F(info.Nodes[0].Location, sequence, animation));
 
 				if (Start < 0 || Start + Facings * Stride > sprites.Length)

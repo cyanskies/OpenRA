@@ -12,6 +12,7 @@
 using System;
 using System.Linq;
 using OpenRA.Mods.Common.Traits;
+using OpenRA.Traits;
 using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Widgets.Logic
@@ -64,18 +65,15 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				}
 			}
 
-			var diplomacy = widget.GetOrNull<MenuButtonWidget>("DIPLOMACY_BUTTON");
-			if (diplomacy != null)
-			{
-				diplomacy.Visible = !world.Map.Visibility.HasFlag(MapVisibility.MissionSelector) && world.Players.Any(a => a != world.LocalPlayer && !a.NonCombatant);
-				diplomacy.IsDisabled = () => disableSystemButtons;
-				diplomacy.OnClick = () => OpenMenuPanel(diplomacy);
-			}
-
 			var debug = widget.GetOrNull<MenuButtonWidget>("DEBUG_BUTTON");
 			if (debug != null)
 			{
-				debug.IsVisible = () => world.LobbyInfo.GlobalSettings.AllowCheats;
+				// Can't use DeveloperMode.Enabled because there is a hardcoded hack to *always*
+				// enable developer mode for singleplayer games, but we only want to show the button
+				// if it has been explicitly enabled
+				var def = world.Map.Rules.Actors["player"].TraitInfo<DeveloperModeInfo>().Enabled;
+				var enabled = world.LobbyInfo.GlobalSettings.OptionOrDefault("cheats", def);
+				debug.IsVisible = () => enabled;
 				debug.IsDisabled = () => disableSystemButtons;
 				debug.OnClick = () => OpenMenuPanel(debug, new WidgetArgs()
 				{

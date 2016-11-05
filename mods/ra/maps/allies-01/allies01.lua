@@ -3,7 +3,7 @@ InsertionPath = { InsertionEntry.Location, InsertionLZ.Location }
 ExtractionHelicopterType = "tran.extraction"
 ExtractionPath = { SouthReinforcementsPoint.Location, ExtractionLZ.Location }
 JeepReinforcements = { "jeep", "jeep" }
-TanyaReinforcements = { "e7" }
+TanyaReinforcements = { "e7.noautotarget" }
 EinsteinType = "einstein"
 FlareType = "flare"
 CruisersReinforcements = { "ca", "ca", "ca", "ca" }
@@ -13,7 +13,9 @@ SendInsertionHelicopter = function()
 		TanyaReinforcements, InsertionPath, { InsertionEntry.Location })[2]
 	local tanya = passengers[1]
 	Trigger.OnKilled(tanya, TanyaKilledInAction)
-	tanya.Stance = "HoldFire"
+	Trigger.AfterDelay(DateTime.Seconds(4), function()
+		Media.DisplayMessage("According to the rules of engagement I need your explicit orders to fire, Commander!", "Tanya")
+	end)
 end
 
 SendJeeps = function()

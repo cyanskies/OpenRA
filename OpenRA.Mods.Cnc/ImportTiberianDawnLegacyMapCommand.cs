@@ -24,13 +24,11 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 		// NOTE: 64x64 map size is a C&C95 engine limitation
 		public ImportTiberianDawnLegacyMapCommand() : base(64) { }
 
-		public string Name { get { return "--import-td-map"; } }
+		string IUtilityCommand.Name { get { return "--import-td-map"; } }
+		bool IUtilityCommand.ValidateArguments(string[] args) { return ValidateArguments(args); }
 
 		[Desc("FILENAME", "Convert a legacy Tiberian Dawn INI/MPR map to the OpenRA format.")]
-		public override void Run(ModData modData, string[] args)
-		{
-			base.Run(modData, args);
-		}
+		void IUtilityCommand.Run(Utility utility, string[] args) { Run(utility, args); }
 
 		public override void ValidateMapFormat(int format)
 		{
@@ -116,6 +114,17 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 			return input.Split(',')[0].ToLowerInvariant();
 		}
 
+		public override CPos ParseActorLocation(string input, int loc)
+		{
+			var newLoc = new CPos(loc % MapSize, loc / MapSize);
+			var vectorDown = new CVec(0, 1);
+
+			if (input == "obli" || input == "atwr" || input == "weap" || input == "hand" || input == "tmpl" || input == "split2" || input == "split3")
+				newLoc += vectorDown;
+
+			return newLoc;
+		}
+
 		public override void LoadPlayer(IniFile file, string section)
 		{
 			string color;
@@ -143,10 +152,22 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 
 		public override void ReadPacks(IniFile file, string filename)
 		{
-			using (var s = ModData.DefaultFileSystem.Open(filename.Substring(0, filename.Length - 4) + ".bin"))
+			using (var s = File.OpenRead(filename.Substring(0, filename.Length - 4) + ".bin"))
 				UnpackTileData(s);
 
 			ReadOverlay(file);
+		}
+
+		public override void SaveWaypoint(int waypointNumber, ActorReference waypointReference)
+		{
+			var waypointName = "waypoint" + waypointNumber;
+			if (waypointNumber == 25)
+				waypointName = "DefaultFlareLocation";
+			else if (waypointNumber == 26)
+				waypointName = "DefaultCameraPosition";
+			else if (waypointNumber == 27)
+				waypointName = "DefaultChinookTarget";
+			Map.ActorDefinitions.Add(new MiniYamlNode(waypointName, waypointReference.Save()));
 		}
 	}
 }

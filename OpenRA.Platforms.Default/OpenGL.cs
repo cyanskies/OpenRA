@@ -48,6 +48,7 @@ namespace OpenRA.Platforms.Default
 
 		// Errors
 		public const int GL_NO_ERROR = 0;
+		public const int GL_OUT_OF_MEMORY = 0x505;
 
 		// BeginMode
 		public const int GL_POINTS = 0;
@@ -72,6 +73,7 @@ namespace OpenRA.Platforms.Default
 
 		// Depth buffer
 		public const int GL_DEPTH_COMPONENT = 0x1902;
+		public const int GL_LEQUAL = 0x0203;
 
 		// BlendingFactorDest
 		public const int GL_ZERO = 0;
@@ -276,6 +278,9 @@ namespace OpenRA.Platforms.Default
 		public delegate void BlendFunc(int sfactor, int dfactor);
 		public static BlendFunc glBlendFunc { get; private set; }
 
+		public delegate void DepthFunc(int func);
+		public static DepthFunc glDepthFunc { get; private set; }
+
 		public delegate void Scissor(int x, int y, int width, int height);
 		public static Scissor glScissor { get; private set; }
 
@@ -418,6 +423,7 @@ namespace OpenRA.Platforms.Default
 				glDisable = Bind<Disable>("glDisable");
 				glBlendEquation = Bind<BlendEquation>("glBlendEquation");
 				glBlendFunc = Bind<BlendFunc>("glBlendFunc");
+				glDepthFunc = Bind<DepthFunc>("glDepthFunc");
 				glScissor = Bind<Scissor>("glScissor");
 				glPushClientAttrib = Bind<PushClientAttrib>("glPushClientAttrib");
 				glPopClientAttrib = Bind<PopClientAttrib>("glPopClientAttrib");
@@ -484,9 +490,14 @@ namespace OpenRA.Platforms.Default
 			var n = glGetError();
 			if (n != GL_NO_ERROR)
 			{
-				var error = "GL Error: {0}\n{1}".F(n, new StackTrace());
+				var errorText = n == GL_OUT_OF_MEMORY ? "Out Of Memory" : n.ToString();
+				var error = "GL Error: {0}\n{1}".F(errorText, new StackTrace());
 				WriteGraphicsLog(error);
-				throw new InvalidOperationException("OpenGL Error: See graphics.log for details.");
+				const string ExceptionMessage = "OpenGL Error: See graphics.log for details.";
+				if (n == GL_OUT_OF_MEMORY)
+					throw new OutOfMemoryException(ExceptionMessage);
+				else
+					throw new InvalidOperationException(ExceptionMessage);
 			}
 		}
 

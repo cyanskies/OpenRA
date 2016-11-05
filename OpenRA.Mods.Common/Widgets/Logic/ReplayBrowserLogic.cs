@@ -18,6 +18,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using OpenRA.FileFormats;
 using OpenRA.Primitives;
+using OpenRA.Traits;
 using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Widgets.Logic
@@ -32,6 +33,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		readonly List<ReplayMetadata> replays = new List<ReplayMetadata>();
 		readonly Dictionary<ReplayMetadata, ReplayState> replayState = new Dictionary<ReplayMetadata, ReplayState>();
 		readonly Action onStart;
+		readonly ModData modData;
 
 		Dictionary<CPos, SpawnOccupant> selectedSpawns;
 		ReplayMetadata selectedReplay;
@@ -43,7 +45,9 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		{
 			panel = widget;
 
+			this.modData = modData;
 			this.onStart = onStart;
+			Game.BeforeGameStart += OnGameStart;
 
 			playerList = panel.Get<ScrollPanelWidget>("PLAYER_LIST");
 			playerHeader = playerList.Get<ScrollItemWidget>("HEADER");
@@ -55,8 +59,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			replayList = panel.Get<ScrollPanelWidget>("REPLAY_LIST");
 			var template = panel.Get<ScrollItemWidget>("REPLAY_TEMPLATE");
 
-			var mod = modData.Manifest.Mod;
-			var dir = Platform.ResolvePath("^", "Replays", mod.Id, mod.Version);
+			var mod = modData.Manifest;
+			var dir = Platform.ResolvePath("^", "Replays", mod.Id, mod.Metadata.Version);
 
 			if (Directory.Exists(dir))
 				ThreadPool.QueueUserWorkItem(_ => LoadReplays(dir, template));
@@ -405,7 +409,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			Action<ReplayMetadata, Action> onDeleteReplay = (r, after) =>
 			{
-				ConfirmationDialogs.PromptConfirmAction(
+				ConfirmationDialogs.ButtonPrompt(
 					title: "Delete selected replay?",
 					text: "Delete replay '{0}'?".F(Path.GetFileNameWithoutExtension(r.FilePath)),
 					onConfirm: () =>
@@ -446,7 +450,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						return;
 					}
 
-					ConfirmationDialogs.PromptConfirmAction(
+					ConfirmationDialogs.ButtonPrompt(
 						title: "Delete all selected replays?",
 						text: "Delete {0} replays?".F(list.Count),
 						onConfirm: () =>
@@ -649,7 +653,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 						var flag = item.Get<ImageWidget>("FLAG");
 						flag.GetImageCollection = () => "flags";
-						flag.GetImageName = () => o.FactionId;
+						var factionInfo = modData.DefaultRules.Actors["world"].TraitInfos<FactionInfo>();
+						flag.GetImageName = () => (factionInfo != null && factionInfo.Any(f => f.InternalName == o.FactionId)) ? o.FactionId : "Random";
 
 						playerList.AddChild(item);
 					}
@@ -664,16 +669,11 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		void WatchReplay()
 		{
-			Action startReplay = () =>
+			if (selectedReplay != null && ReplayUtils.PromptConfirmReplayCompatibility(selectedReplay))
 			{
 				cancelLoadingReplays = true;
 				Game.JoinReplay(selectedReplay.FilePath);
-				Ui.CloseWindow();
-				onStart();
-			};
-
-			if (selectedReplay != null && ReplayUtils.PromptConfirmReplayCompatibility(selectedReplay))
-				startReplay();
+			}
 		}
 
 		void AddReplay(ReplayMetadata replay, ScrollItemWidget template)
@@ -695,6 +695,24 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			item.Get<LabelWidget>("TITLE").GetText = () => item.Text;
 			item.IsVisible = () => replayState[replay].Visible;
 			replayList.AddChild(item);
+		}
+
+		void OnGameStart()
+		{
+			Ui.CloseWindow();
+			onStart();
+		}
+
+		bool disposed;
+		protected override void Dispose(bool disposing)
+		{
+			if (disposing && !disposed)
+			{
+				disposed = true;
+				Game.BeforeGameStart -= OnGameStart;
+			}
+
+			base.Dispose(disposing);
 		}
 
 		class ReplayState

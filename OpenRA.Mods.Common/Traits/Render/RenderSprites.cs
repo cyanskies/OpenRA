@@ -17,7 +17,7 @@ using OpenRA.Mods.Common.Graphics;
 using OpenRA.Primitives;
 using OpenRA.Traits;
 
-namespace OpenRA.Mods.Common.Traits
+namespace OpenRA.Mods.Common.Traits.Render
 {
 	public interface IRenderActorPreviewSpritesInfo : ITraitInfo
 	{
@@ -83,7 +83,7 @@ namespace OpenRA.Mods.Common.Traits
 		}
 	}
 
-	public class RenderSprites : IRender, ITick, INotifyOwnerChanged, INotifyEffectiveOwnerChanged
+	public class RenderSprites : IRender, ITick, INotifyOwnerChanged, INotifyEffectiveOwnerChanged, IActorPreviewInitModifier
 	{
 		class AnimationWrapper
 		{
@@ -228,8 +228,14 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			return anims.Where(b => b.IsVisible
 				&& b.Animation.Animation.CurrentSequence != null)
-					.Select(a => (a.Animation.Animation.Image.Size * info.Scale).ToInt2())
+					.Select(a => (a.Animation.Animation.Image.Size.XY * info.Scale).ToInt2())
 					.FirstOrDefault();
+		}
+
+		void IActorPreviewInitModifier.ModifyActorPreviewInit(Actor self, TypeDictionary inits)
+		{
+			if (!inits.Contains<FactionInit>())
+				inits.Add(new FactionInit(faction));
 		}
 	}
 }

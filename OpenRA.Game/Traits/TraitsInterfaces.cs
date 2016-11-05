@@ -22,7 +22,16 @@ namespace OpenRA.Traits
 {
 	public sealed class RequireExplicitImplementationAttribute : Attribute { }
 
-	public enum DamageState { Undamaged, Light, Medium, Heavy, Critical, Dead }
+	[Flags]
+	public enum DamageState
+	{
+		Undamaged = 1,
+		Light = 2,
+		Medium = 4,
+		Heavy = 8,
+		Critical = 16,
+		Dead = 32
+	}
 
 	public interface IHealth
 	{
@@ -32,7 +41,7 @@ namespace OpenRA.Traits
 		int DisplayHP { get; }
 		bool IsDead { get; }
 
-		void InflictDamage(Actor self, Actor attacker, int damage, IWarhead warhead, bool ignoreModifiers);
+		void InflictDamage(Actor self, Actor attacker, Damage damage, bool ignoreModifiers);
 		void Kill(Actor self, Actor attacker);
 	}
 
@@ -57,27 +66,30 @@ namespace OpenRA.Traits
 		}
 	}
 
-	[Flags]
-	public enum ImpactType
-	{
-		None = 0,
-		Ground = 1,
-		GroundHit = 2,
-		Water = 4,
-		WaterHit = 8,
-		Air = 16,
-		AirHit = 32,
-		TargetTerrain = 64,
-		TargetHit = 128
-	}
-
 	public class AttackInfo
 	{
-		public int Damage;
+		public Damage Damage;
 		public Actor Attacker;
-		public IWarhead Warhead;
 		public DamageState DamageState;
 		public DamageState PreviousDamageState;
+	}
+
+	public class Damage
+	{
+		public readonly int Value;
+		public readonly HashSet<string> DamageTypes;
+
+		public Damage(int damage, HashSet<string> damageTypes)
+		{
+			Value = damage;
+			DamageTypes = damageTypes;
+		}
+
+		public Damage(int damage)
+		{
+			Value = damage;
+			DamageTypes = new HashSet<string>();
+		}
 	}
 
 	public interface ITick { void Tick(Actor self); }
@@ -117,23 +129,12 @@ namespace OpenRA.Traits
 	public interface INotifyCreated { void Created(Actor self); }
 	public interface INotifyAddedToWorld { void AddedToWorld(Actor self); }
 	public interface INotifyRemovedFromWorld { void RemovedFromWorld(Actor self); }
-	public interface INotifySold { void Selling(Actor self); void Sold(Actor self); }
 	public interface INotifyDamage { void Damaged(Actor self, AttackInfo e); }
-	public interface INotifyDamageStateChanged { void DamageStateChanged(Actor self, AttackInfo e); }
-	public interface INotifyRepair { void Repairing(Actor self, Actor host); }
 	public interface INotifyKilled { void Killed(Actor self, AttackInfo e); }
 	public interface INotifyActorDisposing { void Disposing(Actor self); }
 	public interface INotifyAppliedDamage { void AppliedDamage(Actor self, Actor damaged, AttackInfo e); }
-	public interface INotifyBuildComplete { void BuildingComplete(Actor self); }
-	public interface INotifyBuildingPlaced { void BuildingPlaced(Actor self); }
-	public interface INotifyProduction { void UnitProduced(Actor self, Actor other, CPos exit); }
-	public interface INotifyOtherProduction { void UnitProducedByOther(Actor self, Actor producer, Actor produced); }
-	public interface INotifyDelivery { void IncomingDelivery(Actor self); void Delivered(Actor self); }
 	public interface INotifyOwnerChanged { void OnOwnerChanged(Actor self, Player oldOwner, Player newOwner); }
 	public interface INotifyEffectiveOwnerChanged { void OnEffectiveOwnerChanged(Actor self, Player oldEffectiveOwner, Player newEffectiveOwner); }
-	public interface INotifyCapture { void OnCapture(Actor self, Actor captor, Player oldOwner, Player newOwner); }
-	public interface INotifyInfiltrated { void Infiltrated(Actor self, Actor infiltrator); }
-	public interface INotifyDiscovered { void OnDiscovered(Actor self, Player discoverer, bool playNotification); }
 
 	public interface ISeedableResource { void Seed(Actor self); }
 
@@ -150,15 +151,7 @@ namespace OpenRA.Traits
 		bool HasVoice(Actor self, string voice);
 	}
 
-	public interface IDemolishableInfo : ITraitInfoInterface { bool IsValidTarget(ActorInfo actorInfo, Actor saboteur); }
-	public interface IDemolishable
-	{
-		void Demolish(Actor self, Actor saboteur);
-		bool IsValidTarget(Actor self, Actor saboteur);
-	}
-
 	public interface IStoreResources { int Capacity { get; } }
-	public interface INotifyDocking { void Docked(Actor self, Actor harvester); void Undocked(Actor self, Actor harvester); }
 
 	public interface IEffectiveOwner
 	{
@@ -240,7 +233,7 @@ namespace OpenRA.Traits
 	}
 
 	public interface IRenderModifier { IEnumerable<IRenderable> ModifyRender(Actor self, WorldRenderer wr, IEnumerable<IRenderable> r); }
-	public interface IDamageModifier { int GetDamageModifier(Actor attacker, IWarhead warhead); }
+	public interface IDamageModifier { int GetDamageModifier(Actor attacker, Damage damage); }
 	public interface ISpeedModifier { int GetSpeedModifier(); }
 	public interface IFirepowerModifier { int GetFirepowerModifier(); }
 	public interface IReloadModifier { int GetReloadModifier(); }
@@ -254,7 +247,7 @@ namespace OpenRA.Traits
 	public interface IPips { IEnumerable<PipType> GetPips(Actor self); }
 
 	[RequireExplicitImplementation]
-	public interface ISelectionBar { float GetValue(); Color GetColor(); }
+	public interface ISelectionBar { float GetValue(); Color GetColor(); bool DisplayWhenEmpty { get; } }
 
 	public interface IPositionableInfo : ITraitInfoInterface { }
 	public interface IPositionable : IOccupySpace
@@ -282,6 +275,7 @@ namespace OpenRA.Traits
 		Activity VisualMove(Actor self, WPos fromPos, WPos toPos);
 		CPos NearestMoveableCell(CPos target);
 		bool IsMoving { get; set; }
+		bool IsMovingVertically { get; set; }
 		bool CanEnterTargetNow(Actor self, Target target);
 	}
 
@@ -292,8 +286,6 @@ namespace OpenRA.Traits
 		bool IsBlocking(Actor self, CPos cell);
 	}
 
-	public interface INotifyBlockingMove { void OnNotifyBlockingMove(Actor self, Actor blocking); }
-
 	public interface IFacing
 	{
 		int TurnSpeed { get; }
@@ -301,19 +293,6 @@ namespace OpenRA.Traits
 	}
 
 	public interface IFacingInfo : ITraitInfoInterface { int GetInitialFacing(); }
-
-	[RequireExplicitImplementation]
-	public interface ICrushable
-	{
-		bool CrushableBy(Actor self, Actor crusher, HashSet<string> crushClasses);
-	}
-
-	[RequireExplicitImplementation]
-	public interface INotifyCrushed
-	{
-		void OnCrush(Actor self, Actor crusher, HashSet<string> crushClasses);
-		void WarnCrush(Actor self, Actor crusher, HashSet<string> crushClasses);
-	}
 
 	public interface ITraitInfoInterface { }
 	public interface ITraitInfo : ITraitInfoInterface { object Create(ActorInitializer init); }
@@ -348,11 +327,10 @@ namespace OpenRA.Traits
 		string SequencePrefix { get; }
 	}
 
-	public interface IPostRender { void RenderAfterWorld(WorldRenderer wr, Actor self); }
-
-	public interface IRenderShroud { void RenderShroud(WorldRenderer wr, Shroud shroud); }
-
-	public interface IPostRenderSelection { IEnumerable<IRenderable> RenderAfterWorld(WorldRenderer wr); }
+	public interface IRenderAboveWorld { void RenderAboveWorld(Actor self, WorldRenderer wr); }
+	public interface IRenderShroud { void RenderShroud(Shroud shroud, WorldRenderer wr); }
+	public interface IRenderAboveShroud { IEnumerable<IRenderable> RenderAboveShroud(Actor self, WorldRenderer wr); }
+	public interface IRenderAboveShroudWhenSelected { IEnumerable<IRenderable> RenderAboveShroud(Actor self, WorldRenderer wr); }
 
 	public interface ITargetableInfo : ITraitInfoInterface
 	{
@@ -403,4 +381,50 @@ namespace OpenRA.Traits
 
 	public interface IRulesetLoaded<TInfo> { void RulesetLoaded(Ruleset rules, TInfo info); }
 	public interface IRulesetLoaded : IRulesetLoaded<ActorInfo>, ITraitInfoInterface { }
+
+	[RequireExplicitImplementation]
+	public interface ILobbyOptions : ITraitInfoInterface
+	{
+		IEnumerable<LobbyOption> LobbyOptions(Ruleset rules);
+	}
+
+	public class LobbyOption
+	{
+		public readonly string Id;
+		public readonly string Name;
+		public readonly IReadOnlyDictionary<string, string> Values;
+		public readonly string DefaultValue;
+		public readonly bool Locked;
+
+		public LobbyOption(string id, string name, IReadOnlyDictionary<string, string> values, string defaultValue, bool locked)
+		{
+			Id = id;
+			Name = name;
+			Values = values;
+			DefaultValue = defaultValue;
+			Locked = locked;
+		}
+
+		public virtual string ValueChangedMessage(string playerName, string newValue)
+		{
+			return playerName + " changed " + Name + " to " + Values[newValue] + ".";
+		}
+	}
+
+	public class LobbyBooleanOption : LobbyOption
+	{
+		static readonly Dictionary<string, string> BoolValues = new Dictionary<string, string>()
+		{
+			{ true.ToString(), "enabled" },
+			{ false.ToString(), "disabled" }
+		};
+
+		public LobbyBooleanOption(string id, string name, bool defaultValue, bool locked)
+			: base(id, name, new ReadOnlyDictionary<string, string>(BoolValues), defaultValue.ToString(), locked) { }
+
+		public override string ValueChangedMessage(string playerName, string newValue)
+		{
+			return playerName + " " + BoolValues[newValue] + " " + Name + ".";
+		}
+	}
 }

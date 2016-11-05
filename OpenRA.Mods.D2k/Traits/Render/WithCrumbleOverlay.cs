@@ -11,9 +11,10 @@
 
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Traits;
+using OpenRA.Mods.Common.Traits.Render;
 using OpenRA.Traits;
 
-namespace OpenRA.Mods.D2k.Traits
+namespace OpenRA.Mods.D2k.Traits.Render
 {
 	[Desc("Rendered together with the \"make\" animation.")]
 	public class WithCrumbleOverlayInfo : ITraitInfo, Requires<RenderSpritesInfo>
@@ -50,7 +51,7 @@ namespace OpenRA.Mods.D2k.Traits
 			rs.Add(anim, info.Palette, info.IsPlayerPalette);
 		}
 
-		public void BuildingComplete(Actor self)
+		void INotifyBuildComplete.BuildingComplete(Actor self)
 		{
 			buildComplete = true;
 		}

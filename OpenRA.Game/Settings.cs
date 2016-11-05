@@ -59,13 +59,8 @@ namespace OpenRA
 		[Desc("Set this to false to disable UPnP even if compatible devices are found.")]
 		public bool AllowPortForward = true;
 
-		public bool NatDeviceAvailable = false; // internal check if discovery succeeded
-
 		[Desc("Time in milliseconds to search for UPnP enabled NAT devices.")]
 		public int NatDiscoveryTimeout = 1000;
-
-		[Desc("Print very detailed logs for debugging issues with routers.")]
-		public bool VerboseNatDiscovery = false;
 
 		[Desc("Starts the game with a default map. Input as hash that can be obtained by the utility.")]
 		public string Map = null;
@@ -76,8 +71,8 @@ namespace OpenRA
 		[Desc("Value in milliseconds when to terminate the game. Needs to be at least 10000 (10 s) to enable the timer.")]
 		public int TimeOut = 0;
 
-		[Desc("Disallow games where only one player plays with bots.")]
-		public bool DisableSinglePlayer = false;
+		[Desc("For dedicated servers only, controls whether a game can be started with just one human player in the lobby.")]
+		public bool EnableSingleplayer = false;
 
 		[Desc("Query map information from the Resource Center if they are not available locally.")]
 		public bool QueryMapRepository = true;
@@ -101,13 +96,12 @@ namespace OpenRA
 		public int Samples = 25;
 		public bool IgnoreVersionMismatch = false;
 		public bool SendSystemInformation = true;
+		public int SystemInformationVersionPrompt = 0;
 		public string UUID = System.Guid.NewGuid().ToString();
 	}
 
 	public class GraphicSettings
 	{
-		public string Renderer = "Default";
-
 		[Desc("This can be set to Windowed, Fullscreen or PseudoFullscreen.")]
 		public WindowMode Mode = WindowMode.PseudoFullscreen;
 
@@ -146,7 +140,6 @@ namespace OpenRA
 		public bool Shuffle = false;
 		public bool Repeat = false;
 
-		public string Engine = "Default";
 		public string Device = null;
 
 		public bool CashTicks = true;
@@ -166,16 +159,19 @@ namespace OpenRA
 		public string Mod = "modchooser";
 		public string PreviousMod = "ra";
 
+		public string Platform = "Default";
+
 		public bool ShowShellmap = true;
 
 		public bool ViewportEdgeScroll = true;
 		public bool LockMouseWindow = false;
-		public MouseScrollType MouseScroll = MouseScrollType.Standard;
+		public MouseScrollType MiddleMouseScroll = MouseScrollType.Standard;
+		public MouseScrollType RightMouseScroll = MouseScrollType.Disabled;
 		public MouseButtonPreference MouseButtonPreference = new MouseButtonPreference();
 		public float ViewportEdgeScrollStep = 10f;
 		public float UIScrollSpeed = 50f;
 		public int SelectionDeadzone = 24;
-		public int JoystickScrollDeadzone = 8;
+		public int MouseScrollDeadzone = 8;
 
 		public bool UseClassicMouseStyle = false;
 		public StatusBarsType StatusBars = StatusBarsType.Standard;
@@ -206,6 +202,21 @@ namespace OpenRA
 		public Hotkey MapScrollDown = new Hotkey(Keycode.DOWN, Modifiers.None);
 		public Hotkey MapScrollLeft = new Hotkey(Keycode.LEFT, Modifiers.None);
 		public Hotkey MapScrollRight = new Hotkey(Keycode.RIGHT, Modifiers.None);
+
+		public Hotkey MapPushTop = new Hotkey(Keycode.UP, Modifiers.Alt);
+		public Hotkey MapPushBottom = new Hotkey(Keycode.DOWN, Modifiers.Alt);
+		public Hotkey MapPushLeftEdge = new Hotkey(Keycode.LEFT, Modifiers.Alt);
+		public Hotkey MapPushRightEdge = new Hotkey(Keycode.RIGHT, Modifiers.Alt);
+
+		public Hotkey ViewPortBookmarkSaveSlot1 = new Hotkey(Keycode.Q, Modifiers.Ctrl);
+		public Hotkey ViewPortBookmarkSaveSlot2 = new Hotkey(Keycode.W, Modifiers.Ctrl);
+		public Hotkey ViewPortBookmarkSaveSlot3 = new Hotkey(Keycode.E, Modifiers.Ctrl);
+		public Hotkey ViewPortBookmarkSaveSlot4 = new Hotkey(Keycode.R, Modifiers.Ctrl);
+
+		public Hotkey ViewPortBookmarkUseSlot1 = new Hotkey(Keycode.Q, Modifiers.Alt);
+		public Hotkey ViewPortBookmarkUseSlot2 = new Hotkey(Keycode.W, Modifiers.Alt);
+		public Hotkey ViewPortBookmarkUseSlot3 = new Hotkey(Keycode.E, Modifiers.Alt);
+		public Hotkey ViewPortBookmarkUseSlot4 = new Hotkey(Keycode.R, Modifiers.Alt);
 
 		public Hotkey PauseKey = new Hotkey(Keycode.PAUSE, Modifiers.None);
 		public Hotkey PlaceBeaconKey = new Hotkey(Keycode.B, Modifiers.None);
@@ -283,6 +294,11 @@ namespace OpenRA
 		public Hotkey ReplaySpeedRegularKey = new Hotkey(Keycode.F6, Modifiers.None);
 		public Hotkey ReplaySpeedFastKey = new Hotkey(Keycode.F7, Modifiers.None);
 		public Hotkey ReplaySpeedMaxKey = new Hotkey(Keycode.F8, Modifiers.None);
+
+		public Hotkey NextTrack = new Hotkey(Keycode.AUDIONEXT, Modifiers.None);
+		public Hotkey PreviousTrack = new Hotkey(Keycode.AUDIOPREV, Modifiers.None);
+		public Hotkey StopMusic = new Hotkey(Keycode.AUDIOSTOP, Modifiers.None);
+		public Hotkey PauseMusic = new Hotkey(Keycode.AUDIOPLAY, Modifiers.None);
 
 		static readonly Func<KeySettings, Hotkey>[] ProductionKeys = GetKeys(24, "Production");
 		static readonly Func<KeySettings, Hotkey>[] SupportPowerKeys = GetKeys(6, "SupportPower");

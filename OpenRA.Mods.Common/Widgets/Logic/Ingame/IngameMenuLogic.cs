@@ -32,7 +32,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			if (mpe != null)
 				mpe.Fade(mpe.Info.MenuEffect);
 
-			menu.Get<LabelWidget>("VERSION_LABEL").Text = modData.Manifest.Mod.Version;
+			menu.Get<LabelWidget>("VERSION_LABEL").Text = modData.Manifest.Metadata.Version;
 
 			var hideMenu = false;
 			menu.Get("MENU_BUTTONS").IsVisible = () => !hideMenu;
@@ -113,7 +113,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						};
 					}
 
-					ConfirmationDialogs.PromptConfirmAction(
+					ConfirmationDialogs.ButtonPrompt(
 						title: "Leave Mission",
 						text: "Leave this game and return to the menu?",
 						onConfirm: onQuit,
@@ -132,7 +132,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			exitEditorButton.OnClick = () =>
 			{
 				hideMenu = true;
-				ConfirmationDialogs.PromptConfirmAction(
+				ConfirmationDialogs.ButtonPrompt(
 					title: "Exit Map Editor",
 					text: "Exit and lose all unsaved changes?",
 					onConfirm: onQuit,
@@ -152,7 +152,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			surrenderButton.OnClick = () =>
 			{
 				hideMenu = true;
-				ConfirmationDialogs.PromptConfirmAction(
+				ConfirmationDialogs.ButtonPrompt(
 					title: "Surrender",
 					text: "Are you sure you want to surrender?",
 					onConfirm: onSurrender,

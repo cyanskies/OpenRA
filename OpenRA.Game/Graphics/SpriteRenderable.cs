@@ -49,27 +49,30 @@ namespace OpenRA.Graphics
 		public IRenderable OffsetBy(WVec vec) { return new SpriteRenderable(sprite, pos + vec, offset, zOffset, palette, scale, isDecoration); }
 		public IRenderable AsDecoration() { return new SpriteRenderable(sprite, pos, offset, zOffset, palette, scale, true); }
 
-		float2 ScreenPosition(WorldRenderer wr)
+		float3 ScreenPosition(WorldRenderer wr)
 		{
-			return wr.ScreenPxPosition(pos) + wr.ScreenPxOffset(offset) - (0.5f * scale * sprite.Size).ToInt2();
+			var xy = wr.ScreenPxPosition(pos) + wr.ScreenPxOffset(offset) - (0.5f * scale * sprite.Size.XY).ToInt2();
+
+			// HACK: The z offset needs to be applied somewhere, but this probably is the wrong place.
+			return new float3(xy, sprite.Offset.Z + wr.ScreenZPosition(pos, 0) - 0.5f * scale * sprite.Size.Z);
 		}
 
 		public IFinalizedRenderable PrepareRender(WorldRenderer wr) { return this; }
 		public void Render(WorldRenderer wr)
 		{
-			Game.Renderer.WorldSpriteRenderer.DrawSprite(sprite, ScreenPosition(wr), palette, sprite.Size * scale);
+			Game.Renderer.WorldSpriteRenderer.DrawSprite(sprite, ScreenPosition(wr), palette, scale * sprite.Size);
 		}
 
 		public void RenderDebugGeometry(WorldRenderer wr)
 		{
-			var offset = ScreenPosition(wr) + sprite.Offset;
-			Game.Renderer.WorldRgbaColorRenderer.DrawRect(offset, offset + sprite.Size, 1 / wr.Viewport.Zoom, Color.Red);
+			var screenOffset = ScreenPosition(wr) + sprite.Offset;
+			Game.Renderer.WorldRgbaColorRenderer.DrawRect(screenOffset, screenOffset + sprite.Size, 1 / wr.Viewport.Zoom, Color.Red);
 		}
 
 		public Rectangle ScreenBounds(WorldRenderer wr)
 		{
-			var offset = ScreenPosition(wr) + sprite.Offset;
-			return new Rectangle((int)offset.X, (int)offset.Y, (int)sprite.Size.X, (int)sprite.Size.Y);
+			var screenOffset = ScreenPosition(wr) + sprite.Offset;
+			return new Rectangle((int)screenOffset.X, (int)screenOffset.Y, (int)sprite.Size.X, (int)sprite.Size.Y);
 		}
 	}
 }

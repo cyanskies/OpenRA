@@ -9,13 +9,14 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Graphics;
 using OpenRA.Traits;
 
-namespace OpenRA.Mods.Common.Traits
+namespace OpenRA.Mods.Common.Traits.Render
 {
 	[Desc("Renders turrets for units with the Turreted trait.")]
 	public class WithSpriteTurretInfo : UpgradableTraitInfo, IRenderActorPreviewSpritesInfo,
@@ -44,16 +45,20 @@ namespace OpenRA.Mods.Common.Traits
 			var t = init.Actor.TraitInfos<TurretedInfo>()
 				.First(tt => tt.Turret == Turret);
 
-			var ifacing = init.Actor.TraitInfoOrDefault<IFacingInfo>();
-			var bodyFacing = ifacing != null ? init.Contains<FacingInit>() ? init.Get<FacingInit, int>() : ifacing.GetInitialFacing() : 0;
-			var turretFacing = Turreted.GetInitialTurretFacing(init, t.InitialFacing, Turret);
-
-			var anim = new Animation(init.World, image, () => turretFacing);
+			var turretFacing = Turreted.TurretFacingFromInit(init, t.InitialFacing, Turret);
+			var anim = new Animation(init.World, image, turretFacing);
 			anim.Play(RenderSprites.NormalizeSequence(anim, init.GetDamageState(), Sequence));
 
-			var orientation = body.QuantizeOrientation(new WRot(WAngle.Zero, WAngle.Zero, WAngle.FromFacing(bodyFacing)), facings);
-			var offset = body.LocalToWorld(t.Offset.Rotate(orientation));
-			yield return new SpriteActorPreview(anim, offset, -(offset.Y + offset.Z) + 1, p, rs.Scale);
+			Func<int> facing = init.GetFacing();
+			Func<WRot> orientation = () => body.QuantizeOrientation(WRot.FromFacing(facing()), facings);
+			Func<WVec> offset = () => body.LocalToWorld(t.Offset.Rotate(orientation()));
+			Func<int> zOffset = () =>
+			{
+				var tmpOffset = offset();
+				return -(tmpOffset.Y + tmpOffset.Z) + 1;
+			};
+
+			yield return new SpriteActorPreview(anim, offset, zOffset, p, rs.Scale);
 		}
 	}
 
@@ -108,19 +113,30 @@ namespace OpenRA.Mods.Common.Traits
 			return RenderSprites.NormalizeSequence(DefaultAnimation, self.GetDamageState(), sequence);
 		}
 
-		public virtual void DamageStateChanged(Actor self, AttackInfo e)
+		protected virtual void DamageStateChanged(Actor self)
 		{
 			if (DefaultAnimation.CurrentSequence != null)
 				DefaultAnimation.ReplaceAnim(NormalizeSequence(self, DefaultAnimation.CurrentSequence.Name));
 		}
 
-		public virtual void Tick(Actor self)
+		protected virtual void Tick(Actor self)
 		{
 			if (Info.AimSequence == null)
 				return;
 
 			var sequence = Attack.IsAttacking ? Info.AimSequence : Info.Sequence;
 			DefaultAnimation.ReplaceAnim(sequence);
+		}
+
+		void INotifyDamageStateChanged.DamageStateChanged(Actor self, AttackInfo e)
+		{
+			DamageStateChanged(self);
+		}
+
+		void ITick.Tick(Actor self)
+		{
+			// Split into a protected method to allow subclassing
+			Tick(self);
 		}
 
 		void INotifyBuildComplete.BuildingComplete(Actor self) { buildComplete = true; }

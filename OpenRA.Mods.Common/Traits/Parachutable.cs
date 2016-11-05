@@ -9,6 +9,7 @@
  */
 #endregion
 
+using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Mods.Common.Effects;
 using OpenRA.Traits;
@@ -16,7 +17,7 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.Common.Traits
 {
 	[Desc("Can be paradropped by a ParaDrop actor.")]
-	class ParachutableInfo : ITraitInfo
+	public class ParachutableInfo : ITraitInfo, Requires<IPositionableInfo>
 	{
 		[Desc("If we land on invalid terrain for my actor type should we be killed?")]
 		public readonly bool KilledOnImpassableTerrain = true;
@@ -31,6 +32,9 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly string WaterImpactSound = null;
 		[SequenceReference("Image")] public readonly string WaterCorpseSequence = null;
 		[PaletteReference] public readonly string WaterCorpsePalette = "effect";
+
+		[Desc("Terrain types on which to display WaterCorpseSequence.")]
+		public readonly HashSet<string> WaterTerrainTypes = new HashSet<string> { "Water" };
 
 		public readonly int FallRate = 13;
 
@@ -51,8 +55,7 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			self = init.Self;
 			this.info = info;
-
-			positionable = self.TraitOrDefault<IPositionable>();
+			positionable = self.Trait<IPositionable>();
 		}
 
 		void INotifyParachuteLanded.OnLanded(Actor ignore)
@@ -60,21 +63,22 @@ namespace OpenRA.Mods.Common.Traits
 			if (!info.KilledOnImpassableTerrain)
 				return;
 
-			if (positionable.CanEnterCell(self.Location, self))
+			var cell = self.Location;
+			if (positionable.CanEnterCell(cell, self))
 				return;
 
-			if (ignore != null && self.World.ActorMap.GetActorsAt(self.Location).Any(a => a != ignore))
+			if (ignore != null && self.World.ActorMap.GetActorsAt(cell).Any(a => a != ignore))
 				return;
 
-			var terrain = self.World.Map.GetTerrainInfo(self.Location);
+			var onWater = info.WaterTerrainTypes.Contains(self.World.Map.GetTerrainInfo(cell).Type);
 
-			var sound = terrain.IsWater ? info.WaterImpactSound : info.GroundImpactSound;
+			var sound = onWater ? info.WaterImpactSound : info.GroundImpactSound;
 			Game.Sound.Play(sound, self.CenterPosition);
 
-			var sequence = terrain.IsWater ? info.WaterCorpseSequence : info.GroundCorpseSequence;
-			var palette = terrain.IsWater ? info.WaterCorpsePalette : info.GroundCorpsePalette;
+			var sequence = onWater ? info.WaterCorpseSequence : info.GroundCorpseSequence;
+			var palette = onWater ? info.WaterCorpsePalette : info.GroundCorpsePalette;
 			if (sequence != null && palette != null)
-				self.World.AddFrameEndTask(w => w.Add(new Explosion(w, self.OccupiesSpace.CenterPosition, info.Image, sequence, palette)));
+				self.World.AddFrameEndTask(w => w.Add(new SpriteEffect(self.OccupiesSpace.CenterPosition, w, info.Image, sequence, palette)));
 
 			self.Kill(self);
 		}

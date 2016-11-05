@@ -15,7 +15,7 @@ using OpenRA.Mods.Common.Effects;
 using OpenRA.Mods.Common.Warheads;
 using OpenRA.Traits;
 
-namespace OpenRA.Mods.Common.Traits
+namespace OpenRA.Mods.Common.Traits.Render
 {
 	[Desc("This actor has a death animation.")]
 	public class WithDeathAnimationInfo : ITraitInfo, Requires<RenderSpritesInfo>
@@ -42,9 +42,9 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly bool CrushedPaletteIsPlayerPalette = false;
 
 		[FieldLoader.LoadUsing("LoadDeathTypes")]
-		[Desc("Death animation to use for each damage type (defined on the warheads).",
+		[Desc("Death animations to use for each damage type (defined on the warheads).",
 			"Is only used if UseDeathTypeSuffix is `True`.")]
-		public readonly Dictionary<string, int> DeathTypes = new Dictionary<string, int>();
+		public readonly Dictionary<string, string[]> DeathTypes = new Dictionary<string, string[]>();
 
 		[Desc("Sequence to use when the actor is killed by some non-standard means (e.g. suicide).")]
 		[SequenceReference] public readonly string FallbackSequence = null;
@@ -54,8 +54,8 @@ namespace OpenRA.Mods.Common.Traits
 			var md = yaml.ToDictionary();
 
 			return md.ContainsKey("DeathTypes")
-				? md["DeathTypes"].ToDictionary(my => FieldLoader.GetValue<int>("(value)", my.Value))
-				: new Dictionary<string, int>();
+				? md["DeathTypes"].ToDictionary(my => FieldLoader.GetValue<string[]>("(value)", my.Value))
+				: new Dictionary<string, string[]>();
 		}
 
 		public object Create(ActorInitializer init) { return new WithDeathAnimation(init.Self, this); }
@@ -84,7 +84,7 @@ namespace OpenRA.Mods.Common.Traits
 				palette += self.Owner.InternalName;
 
 			// Killed by some non-standard means
-			if (e.Warhead == null || !(e.Warhead is DamageWarhead))
+			if (e.Damage.DamageTypes.Count == 0)
 			{
 				if (Info.FallbackSequence != null)
 					SpawnDeathAnimation(self, self.CenterPosition, rs.GetImage(self), Info.FallbackSequence, palette);
@@ -95,12 +95,11 @@ namespace OpenRA.Mods.Common.Traits
 			var sequence = Info.DeathSequence;
 			if (Info.UseDeathTypeSuffix)
 			{
-				var warhead = e.Warhead as DamageWarhead;
-				var damageType = Info.DeathTypes.Keys.FirstOrDefault(warhead.DamageTypes.Contains);
+				var damageType = Info.DeathTypes.Keys.FirstOrDefault(e.Damage.DamageTypes.Contains);
 				if (damageType == null)
 					return;
 
-				sequence += Info.DeathTypes[damageType];
+				sequence += Info.DeathTypes[damageType].Random(self.World.SharedRandom);
 			}
 
 			SpawnDeathAnimation(self, self.CenterPosition, rs.GetImage(self), sequence, palette);
@@ -108,7 +107,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public void SpawnDeathAnimation(Actor self, WPos pos, string image, string sequence, string palette)
 		{
-			self.World.AddFrameEndTask(w => w.Add(new Corpse(w, pos, image, sequence, palette)));
+			self.World.AddFrameEndTask(w => w.Add(new SpriteEffect(pos, w, image, sequence, palette)));
 		}
 
 		void INotifyCrushed.OnCrush(Actor self, Actor crusher, HashSet<string> crushClasses)

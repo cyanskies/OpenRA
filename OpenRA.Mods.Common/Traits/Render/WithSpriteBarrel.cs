@@ -9,13 +9,14 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Graphics;
 using OpenRA.Traits;
 
-namespace OpenRA.Mods.Common.Traits
+namespace OpenRA.Mods.Common.Traits.Render
 {
 	[Desc("Renders barrels for units with the Turreted trait.")]
 	public class WithSpriteBarrelInfo : UpgradableTraitInfo, IRenderActorPreviewSpritesInfo, Requires<TurretedInfo>,
@@ -43,13 +44,20 @@ namespace OpenRA.Mods.Common.Traits
 			var t = init.Actor.TraitInfos<TurretedInfo>()
 				.First(tt => tt.Turret == armament.Turret);
 
-			var anim = new Animation(init.World, image, () => t.InitialFacing);
+			var turretFacing = Turreted.TurretFacingFromInit(init, t.InitialFacing, armament.Turret);
+			var anim = new Animation(init.World, image, turretFacing);
 			anim.Play(RenderSprites.NormalizeSequence(anim, init.GetDamageState(), Sequence));
 
-			var turretOrientation = body.QuantizeOrientation(new WRot(WAngle.Zero, WAngle.Zero, WAngle.FromFacing(t.InitialFacing)), facings);
-			var turretOffset = body.LocalToWorld(t.Offset.Rotate(turretOrientation));
+			Func<int> facing = init.GetFacing();
+			Func<WRot> orientation = () => body.QuantizeOrientation(WRot.FromFacing(facing()), facings);
+			Func<WVec> turretOffset = () => body.LocalToWorld(t.Offset.Rotate(orientation()));
+			Func<int> zOffset = () =>
+			{
+				var tmpOffset = turretOffset();
+				return -(tmpOffset.Y + tmpOffset.Z) + 1;
+			};
 
-			yield return new SpriteActorPreview(anim, turretOffset, turretOffset.Y + turretOffset.Z, p, rs.Scale);
+			yield return new SpriteActorPreview(anim, turretOffset, zOffset, p, rs.Scale);
 		}
 	}
 

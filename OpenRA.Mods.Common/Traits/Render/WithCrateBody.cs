@@ -16,13 +16,16 @@ using OpenRA.Graphics;
 using OpenRA.Mods.Common.Graphics;
 using OpenRA.Traits;
 
-namespace OpenRA.Mods.Common.Traits
+namespace OpenRA.Mods.Common.Traits.Render
 {
 	[Desc("Renders crates with both water and land variants.")]
 	class WithCrateBodyInfo : ITraitInfo, Requires<RenderSpritesInfo>, IRenderActorPreviewSpritesInfo
 	{
 		[Desc("Easteregg sequences to use in December.")]
 		public readonly string[] XmasImages = { };
+
+		[Desc("Terrain types on which to display WaterSequence.")]
+		public readonly HashSet<string> WaterTerrainTypes = new HashSet<string> { "Water" };
 
 		[SequenceReference] public readonly string IdleSequence = "idle";
 		[SequenceReference] public readonly string WaterSequence = null;
@@ -34,7 +37,7 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			var anim = new Animation(init.World, rs.Image, () => 0);
 			anim.PlayRepeating(RenderSprites.NormalizeSequence(anim, init.GetDamageState(), IdleSequence));
-			yield return new SpriteActorPreview(anim, WVec.Zero, 0, p, rs.Scale);
+			yield return new SpriteActorPreview(anim, () => WVec.Zero, () => 0, p, rs.Scale);
 		}
 	}
 
@@ -74,7 +77,8 @@ namespace OpenRA.Mods.Common.Traits
 
 		void PlaySequence()
 		{
-			var sequence = self.World.Map.GetTerrainInfo(self.Location).IsWater ? info.WaterSequence : info.LandSequence;
+			var onWater = info.WaterTerrainTypes.Contains(self.World.Map.GetTerrainInfo(self.Location).Type);
+			var sequence = onWater ? info.WaterSequence : info.LandSequence;
 			if (!string.IsNullOrEmpty(sequence))
 				anim.PlayRepeating(sequence);
 		}

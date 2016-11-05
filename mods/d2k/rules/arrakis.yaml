@@ -27,7 +27,7 @@ spicebloom:
 	AutoSelectionSize:
 	RenderSprites:
 	AppearsOnRadar:
-		UseLocation: yes
+		UseLocation: true
 	Tooltip:
 		Name: Spice Bloom
 	SpiceBloom:
@@ -46,7 +46,7 @@ spicebloom:
 		Radius: 512
 	Targetable:
 		TargetTypes: Ground
-		RequiresForceFire: yes
+		RequiresForceFire: true
 	Armor:
 		Type: none
 
@@ -54,7 +54,6 @@ sandworm:
 	Inherits@1: ^SpriteActor
 	Tooltip:
 		Name: Sandworm
-		Description: Attracted by vibrations in the sand.\nWill eat units whole and has a large appetite.
 	Health:
 		HP: 9990
 		Radius: 256
@@ -86,7 +85,7 @@ sandworm:
 		Sequence: sand
 	HiddenUnderFog:
 	AppearsOnRadar:
-		UseLocation: yes
+		UseLocation: true
 	AttackSwallow:
 		AttackRequiresEnteringCell: true
 		IgnoresVisibility: true
@@ -110,6 +109,8 @@ sandworm:
 		UpgradeTypes: attacking
 		UpgradeMaxEnabledLevel: 0
 	UpgradeManager:
+	Buildable:
+		Description: Attracted by vibrations in the sand.\nWill eat units whole and has a large appetite.
 
 sietch:
 	Inherits: ^Building
@@ -125,7 +126,7 @@ sietch:
 		Type: wood
 	RevealsShroud:
 		Range: 10c0
-	-DamagedWithoutFoundation:
+	-DamagedByTerrain:
 	-GivesBuildableArea:
 	-Sellable:
 	-Capturable:

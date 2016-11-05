@@ -15,7 +15,7 @@ using System.Linq;
 using OpenRA.Graphics;
 using OpenRA.Traits;
 
-namespace OpenRA.Mods.Common.Traits
+namespace OpenRA.Mods.Common.Traits.Render
 {
 	[Desc("Renders the MuzzleSequence from the Armament trait.")]
 	class WithMuzzleOverlayInfo : UpgradableTraitInfo, Requires<RenderSpritesInfo>, Requires<AttackBaseInfo>, Requires<ArmamentInfo>
@@ -75,7 +75,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		public void Attacking(Actor self, Target target, Armament a, Barrel barrel)
+		void INotifyAttack.Attacking(Actor self, Target target, Armament a, Barrel barrel)
 		{
 			if (a == null)
 				return;
@@ -93,6 +93,8 @@ namespace OpenRA.Mods.Common.Traits
 			visible[barrel] = true;
 			anims[barrel].Animation.PlayThen(sequence, () => visible[barrel] = false);
 		}
+
+		void INotifyAttack.PreparingAttack(Actor self, Target target, Armament a, Barrel barrel) { }
 
 		public IEnumerable<IRenderable> Render(Actor self, WorldRenderer wr)
 		{

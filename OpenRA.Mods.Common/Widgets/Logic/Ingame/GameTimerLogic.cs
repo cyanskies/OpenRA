@@ -10,6 +10,7 @@
 #endregion
 
 using System;
+using OpenRA.Mods.Common.Traits;
 using OpenRA.Network;
 using OpenRA.Widgets;
 
@@ -40,12 +41,17 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			if (timer != null)
 			{
+				// Timers in replays should be synced to the effective game time, not the playback time.
+				var timestep = world.Timestep;
+				if (world.IsReplay)
+					timestep = world.WorldActor.Trait<MapOptions>().GameSpeed.Timestep;
+
 				timer.GetText = () =>
 				{
 					if (status == null && shouldShowStatus())
 						return statusText();
 
-					return WidgetUtils.FormatTime(world.WorldTick, world.Timestep);
+					return WidgetUtils.FormatTime(world.WorldTick, timestep);
 				};
 			}
 

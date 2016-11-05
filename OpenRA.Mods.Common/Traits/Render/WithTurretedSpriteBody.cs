@@ -16,7 +16,7 @@ using OpenRA.Graphics;
 using OpenRA.Mods.Common.Graphics;
 using OpenRA.Traits;
 
-namespace OpenRA.Mods.Common.Traits
+namespace OpenRA.Mods.Common.Traits.Render
 {
 	[Desc("This actor has turret art with facings baked into the sprite.")]
 	public class WithTurretedSpriteBodyInfo : WithSpriteBodyInfo, Requires<TurretedInfo>, Requires<BodyOrientationInfo>
@@ -32,7 +32,7 @@ namespace OpenRA.Mods.Common.Traits
 			var anim = new Animation(init.World, image, () => t.InitialFacing);
 			anim.PlayRepeating(RenderSprites.NormalizeSequence(anim, init.GetDamageState(), wsb.Sequence));
 
-			yield return new SpriteActorPreview(anim, WVec.Zero, 0, p, rs.Scale);
+			yield return new SpriteActorPreview(anim, () => WVec.Zero, () => 0, p, rs.Scale);
 		}
 	}
 
@@ -54,9 +54,9 @@ namespace OpenRA.Mods.Common.Traits
 			turreted.QuantizedFacings = DefaultAnimation.CurrentSequence.Facings;
 		}
 
-		public override void DamageStateChanged(Actor self, AttackInfo e)
+		protected override void DamageStateChanged(Actor self)
 		{
-			base.DamageStateChanged(self, e);
+			base.DamageStateChanged(self);
 			turreted.QuantizedFacings = DefaultAnimation.CurrentSequence.Facings;
 		}
 	}

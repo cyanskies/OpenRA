@@ -9,11 +9,10 @@ WaterTransportTriggerArea = { CPos.New(39, 54), CPos.New(40, 54), CPos.New(41, 5
 ParadropTriggerArea = { CPos.New(81, 60), CPos.New(82, 60), CPos.New(83, 60), CPos.New(63, 63), CPos.New(64, 63), CPos.New(65, 63), CPos.New(66, 63), CPos.New(67, 63), CPos.New(68, 63), CPos.New(69, 63), CPos.New(70, 63), CPos.New(71, 63), CPos.New(72, 63) }
 ReinforcementsTriggerArea = { CPos.New(96, 55), CPos.New(97, 55), CPos.New(97, 56), CPos.New(98, 56) }
 
-if Map.Difficulty == "Easy" then
+if Map.LobbyOption("difficulty") == "easy" then
 	TanyaType = "e7"
 else
 	TanyaType = "e7.noautotarget"
-	ChangeStance = true
 end
 
 IdleHunt = function(actor)
@@ -50,8 +49,7 @@ SendAlliedUnits = function()
 	local Artillery = Actor.Create("arty", true, { Owner = player, Location = AlliedUnitsEntry.Location })
 	local Tanya = Actor.Create(TanyaType, true, { Owner = player, Location = AlliedUnitsEntry.Location })
 
-	if ChangeStance then
-		Tanya.Stance = "HoldFire"
+	if TanyaType == "e7.noautotarget" then
 		Trigger.AfterDelay(DateTime.Seconds(2), function()
 			Media.DisplayMessage("According to the rules of engagement I need your explicit orders to fire, Commander!", "Tanya")
 		end)

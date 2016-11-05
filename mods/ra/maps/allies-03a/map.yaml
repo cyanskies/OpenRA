@@ -1133,7 +1133,7 @@ Actors:
 		Location: 81,77
 		Owner: USSR
 	USSRAdvancedPowerPlant: apwr
-		Location: 81,80
+		Location: 81,81
 		Owner: USSR
 	USSRRadarDome: dome
 		Location: 78,80
@@ -1307,6 +1307,6 @@ Actors:
 		Location: 59,72
 		Owner: Neutral
 
-Rules: rules.yaml
+Rules: ra|rules/campaign-rules.yaml, ra|rules/campaign-tooltips.yaml, rules.yaml
 
 Weapons: weapons.yaml

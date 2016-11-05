@@ -77,18 +77,17 @@ namespace OpenRA.Network
 							if (world == null)
 							{
 								if (orderManager.LocalClient != null && client.Team == orderManager.LocalClient.Team)
-									Game.AddChatLine(client.Color.RGB, client.Name + " (Team)", order.TargetString);
+									Game.AddChatLine(client.Color.RGB, "[Team] " + client.Name, order.TargetString);
 							}
 							else
 							{
 								var player = world.FindPlayerByClient(client);
-								if (player != null && ((world.LocalPlayer != null && player.Stances[world.LocalPlayer] == Stance.Ally) || player.WinState == WinState.Lost))
-								{
-									var suffix = player.WinState == WinState.Lost ? " (Dead)" : " (Team)";
-									Game.AddChatLine(client.Color.RGB, client.Name + suffix, order.TargetString);
-								}
+								if (player != null && player.WinState == WinState.Lost)
+									Game.AddChatLine(client.Color.RGB, client.Name + " (Dead)", order.TargetString);
+								else if (player != null && world.LocalPlayer != null && player.Stances[world.LocalPlayer] == Stance.Ally)
+									Game.AddChatLine(client.Color.RGB, "[Team] " + client.Name, order.TargetString);
 								else if (orderManager.LocalClient != null && orderManager.LocalClient.IsObserver && client.IsObserver)
-									Game.AddChatLine(client.Color.RGB, client.Name + " (Spectators)", order.TargetString);
+									Game.AddChatLine(client.Color.RGB, "[Spectators] " + client.Name, order.TargetString);
 							}
 						}
 
@@ -133,13 +132,13 @@ namespace OpenRA.Network
 				case "HandshakeRequest":
 					{
 						// Switch to the server's mod if we need and are able to
-						var mod = Game.ModData.Manifest.Mod;
+						var mod = Game.ModData.Manifest;
 						var request = HandshakeRequest.Deserialize(order.TargetString);
 
-						ModMetadata serverMod;
+						Manifest serverMod;
 						if (request.Mod != mod.Id &&
-							ModMetadata.AllMods.TryGetValue(request.Mod, out serverMod) &&
-							serverMod.Version == request.Version)
+							Game.Mods.TryGetValue(request.Mod, out serverMod) &&
+							serverMod.Metadata.Version == request.Version)
 						{
 							var replay = orderManager.Connection as ReplayConnection;
 							var launchCommand = replay != null ?
@@ -171,7 +170,7 @@ namespace OpenRA.Network
 						{
 							Client = info,
 							Mod = mod.Id,
-							Version = mod.Version,
+							Version = mod.Metadata.Version,
 							Password = orderManager.Password
 						};
 

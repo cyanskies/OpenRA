@@ -2,7 +2,7 @@ MapFormat: 11
 
 RequiresMod: cnc
 
-Title: Infiltrate Nod Base
+Title: 06:   Infiltrate Nod Base
 
 Author: Westwood Studios
 
@@ -754,7 +754,7 @@ Actors:
 		Location: 51,14
 		Owner: Nod
 	HandOfNod: hand
-		Location: 44,12
+		Location: 44,13
 		Owner: Nod
 	Silo4: silo
 		Location: 44,16

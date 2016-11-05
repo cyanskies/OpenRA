@@ -10,7 +10,7 @@
 #endregion
 
 using OpenRA.Activities;
-using OpenRA.Effects;
+using OpenRA.Mods.Common.Effects;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Traits;
 
@@ -76,6 +76,13 @@ namespace OpenRA.Mods.Common.Activities
 							t.OnCapture(target.Actor, self, oldOwner, self.Owner);
 
 						capturable.EndCapture();
+
+						if (self.Owner.Stances[oldOwner].HasStance(capturesInfo.PlayerExperienceStances))
+						{
+							var exp = self.Owner.PlayerActor.TraitOrDefault<PlayerExperience>();
+							if (exp != null)
+								exp.GiveExperience(capturesInfo.PlayerExperience);
+						}
 
 						if (capturesInfo != null && capturesInfo.ConsumeActor)
 							self.Dispose();

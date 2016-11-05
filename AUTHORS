@@ -26,6 +26,7 @@ Also thanks to:
     * Adam Valy (Tschokky)
     * Akseli Virtanen (RAGEQUIT)
     * Alexander Fast (mizipzor)
+    * Alexis Hunt (alercah)
     * Allen262
     * Andrew Aldridge (i80and)
     * Andrew Perkins
@@ -105,9 +106,11 @@ Also thanks to:
     * Paolo Chiodi (paolochiodi)
     * Paul Dovydaitis (pdovy)
     * Pavlos Touboulidis (pav)
+    * Pedro Ferreira Ramos (bateramos)
     * Pizzaoverhead
     * Piët Delport (pjdelport)
     * Psydev
+    * Raphael Vogt (TheRaffy, Yellow)
     * Raymond Bedrossian (Squiggles211)
     * Raymond Martineau (mart0258)
     * Riderr3
@@ -124,6 +127,7 @@ Also thanks to:
     * Tirili
     * Tristan Keating (Kilkakon)
     * Tristan Mühlbacher (MicroBit)
+    * UnknownProgrammer
     * Vladimir Komarov (VrKomarov)
     * Wuschel
 
@@ -156,8 +160,9 @@ under the MIT license.
 Using FuzzyLogicLibrary (fuzzynet) by Dmitry
 Kaluzhny and released under the GNU GPL terms.
 
-Using Mono.Nat by Alan McGovern and Ben
-Motmans and distributed under the MIT license.
+Using Open.Nat by Lucas Ontivero, based on the work
+of Alan McGovern and Ben Motmans and distributed
+under the MIT license.
 
 Using ICSharpCode.SharpZipLib initially by Mike
 Krueger and distributed under the GNU GPL terms.

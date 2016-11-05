@@ -4,7 +4,7 @@ Debris:
 	Projectile: Bullet
 		Speed: 32, 96
 		Blockable: false
-		Angle: 30, 90
+		LaunchAngle: 30, 90
 		Inaccuracy: 1c256
 		Image: shrapnel
 	Warhead@1Dam: SpreadDamage
@@ -25,6 +25,7 @@ Debris:
 		DamageTypes: Prone50Percent, TriggerProne, SmallExplosionDeath
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: SandCrater
+		InvalidTargets: Vehicle, Structure
 	Warhead@3Eff: CreateEffect
 		Explosions: small_explosion
 		ImpactSounds: EXPLLG5.WAV
@@ -35,10 +36,10 @@ Debris2:
 	Projectile: Bullet
 		Speed: 32, 96
 		Blockable: false
-		Angle: 30, 90
+		LaunchAngle: 30, 90
 		Inaccuracy: 1c256
 		Image: shrapnel2
-		Trail: bazooka_trail
+		TrailImage: bazooka_trail
 		TrailPalette: effect75alpha
 		TrailInterval: 2
 	Warhead@1Dam: SpreadDamage
@@ -59,6 +60,7 @@ Debris2:
 		DamageTypes: Prone50Percent, TriggerProne, ExplosionDeath
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: SandCrater
+		InvalidTargets: Vehicle, Structure
 	Warhead@3Eff: CreateEffect
 		Explosions: med_explosion
 		ImpactSounds: EXPLLG5.WAV
@@ -69,10 +71,10 @@ Debris3:
 	Projectile: Bullet
 		Speed: 32, 96
 		Blockable: false
-		Angle: 30, 90
+		LaunchAngle: 30, 90
 		Inaccuracy: 1c256
 		Image: shrapnel3
-		Trail: large_trail
+		TrailImage: large_trail
 		TrailPalette: effect75alpha
 		TrailInterval: 1
 	Warhead@1Dam: SpreadDamage
@@ -93,6 +95,7 @@ Debris3:
 		DamageTypes: Prone50Percent, TriggerProne, ExplosionDeath
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: SandCrater
+		InvalidTargets: Vehicle, Structure
 	Warhead@3Eff: CreateEffect
 		Explosions: med_explosion
 		ImpactSounds: EXPLLG5.WAV
@@ -103,10 +106,10 @@ Debris4:
 	Projectile: Bullet
 		Speed: 32, 96
 		Blockable: false
-		Angle: 30, 90
+		LaunchAngle: 30, 90
 		Inaccuracy: 1c256
 		Image: shrapnel4
-		Trail: large_trail
+		TrailImage: large_trail
 		TrailPalette: effect75alpha
 		TrailInterval: 1
 	Warhead@1Dam: SpreadDamage
@@ -127,6 +130,7 @@ Debris4:
 		DamageTypes: Prone50Percent, TriggerProne, ExplosionDeath
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: SandCrater
+		InvalidTargets: Vehicle, Structure
 	Warhead@3Eff: CreateEffect
 		Explosions: large_explosion
 		ImpactSounds: EXPLLG5.WAV

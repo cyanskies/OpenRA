@@ -12,8 +12,8 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using OpenRA.Effects;
 using OpenRA.Graphics;
+using OpenRA.Mods.Common.Effects;
 using OpenRA.Mods.Common.Graphics;
 using OpenRA.Traits;
 
@@ -67,7 +67,7 @@ namespace OpenRA.Mods.Common.Traits
 				return;
 
 			// TODO: Eventually support CellTriggers as well
-			proximityTrigger = self.World.ActorMap.AddProximityTrigger(self.CenterPosition, Info.Range, ActorEntered, ActorLeft);
+			proximityTrigger = self.World.ActorMap.AddProximityTrigger(self.CenterPosition, Info.Range, WDist.Zero, ActorEntered, ActorLeft);
 		}
 
 		void INotifyRemovedFromWorld.RemovedFromWorld(Actor self)
@@ -84,7 +84,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (!self.IsInWorld || self.CenterPosition == prevPosition)
 				return;
 
-			self.World.ActorMap.UpdateProximityTrigger(proximityTrigger, self.CenterPosition, Info.Range);
+			self.World.ActorMap.UpdateProximityTrigger(proximityTrigger, self.CenterPosition, Info.Range, WDist.Zero);
 			prevPosition = self.CenterPosition;
 		}
 
@@ -183,13 +183,13 @@ namespace OpenRA.Mods.Common.Traits
 					w.Add(new FlashTarget(self));
 
 				foreach (var t in self.TraitsImplementing<INotifyCapture>())
-					t.OnCapture(self, captor, previousOwner, self.Owner);
+					t.OnCapture(self, captor, previousOwner, captor.Owner);
 			});
 		}
 
 		void INotifyOwnerChanged.OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
 		{
-			skipTriggerUpdate = false;
+			Game.RunAfterTick(() => skipTriggerUpdate = false);
 		}
 	}
 }

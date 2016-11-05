@@ -9,10 +9,12 @@
  */
 #endregion
 
+using System.Collections.Generic;
+
 namespace OpenRA.Traits
 {
 	[Desc("Attach this to the player actor.")]
-	public class DeveloperModeInfo : ITraitInfo
+	public class DeveloperModeInfo : ITraitInfo, ILobbyOptions
 	{
 		[Desc("Default value of the developer mode checkbox in the lobby.")]
 		public bool Enabled = false;
@@ -56,19 +58,34 @@ namespace OpenRA.Traits
 		[Desc("Enable the actor tags overlay by default.")]
 		public bool ShowActorTags;
 
+		IEnumerable<LobbyOption> ILobbyOptions.LobbyOptions(Ruleset rules)
+		{
+			yield return new LobbyBooleanOption("cheats", "Debug Menu", Enabled, Locked);
+		}
+
 		public object Create(ActorInitializer init) { return new DeveloperMode(this); }
 	}
 
-	public class DeveloperMode : IResolveOrder, ISync
+	public class DeveloperMode : IResolveOrder, ISync, INotifyCreated
 	{
-		DeveloperModeInfo info;
-		[Sync] public bool FastCharge;
-		[Sync] public bool AllTech;
-		[Sync] public bool FastBuild;
-		[Sync] public bool DisableShroud;
-		[Sync] public bool PathDebug;
-		[Sync] public bool UnlimitedPower;
-		[Sync] public bool BuildAnywhere;
+		readonly DeveloperModeInfo info;
+		public bool Enabled { get; private set; }
+
+		[Sync] bool fastCharge;
+		[Sync] bool allTech;
+		[Sync] bool fastBuild;
+		[Sync] bool disableShroud;
+		[Sync] bool pathDebug;
+		[Sync] bool unlimitedPower;
+		[Sync] bool buildAnywhere;
+
+		public bool FastCharge { get { return Enabled && fastCharge; } }
+		public bool AllTech { get { return Enabled && allTech; } }
+		public bool FastBuild { get { return Enabled && fastBuild; } }
+		public bool DisableShroud { get { return Enabled && disableShroud; } }
+		public bool PathDebug { get { return Enabled && pathDebug; } }
+		public bool UnlimitedPower { get { return Enabled && unlimitedPower; } }
+		public bool BuildAnywhere { get { return Enabled && buildAnywhere; } }
 
 		// Client side only
 		public bool ShowCombatGeometry;
@@ -76,128 +93,132 @@ namespace OpenRA.Traits
 		public bool ShowDepthPreview;
 		public bool ShowActorTags;
 
-		public bool EnableAll;
+		bool enableAll;
 
 		public DeveloperMode(DeveloperModeInfo info)
 		{
 			this.info = info;
-			FastBuild = info.FastBuild;
-			FastCharge = info.FastCharge;
-			DisableShroud = info.DisableShroud;
-			PathDebug = info.PathDebug;
-			UnlimitedPower = info.UnlimitedPower;
-			BuildAnywhere = info.BuildAnywhere;
+			fastBuild = info.FastBuild;
+			fastCharge = info.FastCharge;
+			disableShroud = info.DisableShroud;
+			pathDebug = info.PathDebug;
+			unlimitedPower = info.UnlimitedPower;
+			buildAnywhere = info.BuildAnywhere;
+
 			ShowCombatGeometry = info.ShowCombatGeometry;
 			ShowDebugGeometry = info.ShowDebugGeometry;
 			ShowDepthPreview = info.ShowDepthPreview;
 			ShowActorTags = info.ShowActorTags;
 		}
 
+		void INotifyCreated.Created(Actor self)
+		{
+			Enabled = self.World.LobbyInfo.IsSinglePlayer || self.World.LobbyInfo.GlobalSettings
+				.OptionOrDefault("cheats", info.Enabled);
+		}
+
 		public void ResolveOrder(Actor self, Order order)
 		{
-			if (!self.World.AllowDevCommands)
+			if (!Enabled)
 				return;
 
 			switch (order.OrderString)
 			{
 				case "DevAll":
+				{
+					enableAll ^= true;
+					allTech = fastCharge = fastBuild = disableShroud = unlimitedPower = buildAnywhere = enableAll;
+
+					if (enableAll)
 					{
-						EnableAll ^= true;
-						AllTech = FastCharge = FastBuild = DisableShroud = UnlimitedPower = BuildAnywhere = EnableAll;
+						self.Owner.Shroud.ExploreAll();
 
-						if (EnableAll)
-						{
-							self.Owner.Shroud.ExploreAll(self.World);
-
-							var amount = order.ExtraData != 0 ? (int)order.ExtraData : info.Cash;
-							self.Trait<PlayerResources>().GiveCash(amount);
-						}
-						else
-						{
-							self.Owner.Shroud.ResetExploration();
-						}
-
-						self.Owner.Shroud.Disabled = DisableShroud;
-						if (self.World.LocalPlayer == self.Owner)
-							self.World.RenderPlayer = DisableShroud ? null : self.Owner;
-
-						break;
-					}
-
-				case "DevEnableTech":
-					{
-						AllTech ^= true;
-						break;
-					}
-
-				case "DevFastCharge":
-					{
-						FastCharge ^= true;
-						break;
-					}
-
-				case "DevFastBuild":
-					{
-						FastBuild ^= true;
-						break;
-					}
-
-				case "DevGiveCash":
-					{
 						var amount = order.ExtraData != 0 ? (int)order.ExtraData : info.Cash;
 						self.Trait<PlayerResources>().GiveCash(amount);
-						break;
 					}
+					else
+						self.Owner.Shroud.ResetExploration();
+
+					self.Owner.Shroud.Disabled = DisableShroud;
+					if (self.World.LocalPlayer == self.Owner)
+						self.World.RenderPlayer = DisableShroud ? null : self.Owner;
+
+					break;
+				}
+
+				case "DevEnableTech":
+				{
+					allTech ^= true;
+					break;
+				}
+
+				case "DevFastCharge":
+				{
+					fastCharge ^= true;
+					break;
+				}
+
+				case "DevFastBuild":
+				{
+					fastBuild ^= true;
+					break;
+				}
+
+				case "DevGiveCash":
+				{
+					var amount = order.ExtraData != 0 ? (int)order.ExtraData : info.Cash;
+					self.Trait<PlayerResources>().GiveCash(amount);
+					break;
+				}
 
 				case "DevGrowResources":
-					{
-						foreach (var a in self.World.ActorsWithTrait<ISeedableResource>())
-						{
-							for (var i = 0; i < info.ResourceGrowth; i++)
-								a.Trait.Seed(a.Actor);
-						}
+				{
+					foreach (var a in self.World.ActorsWithTrait<ISeedableResource>())
+						for (var i = 0; i < info.ResourceGrowth; i++)
+							a.Trait.Seed(a.Actor);
 
-						break;
-					}
+					break;
+				}
 
 				case "DevVisibility":
-					{
-						DisableShroud ^= true;
-						self.Owner.Shroud.Disabled = DisableShroud;
-						if (self.World.LocalPlayer == self.Owner)
-							self.World.RenderPlayer = DisableShroud ? null : self.Owner;
-						break;
-					}
+				{
+					disableShroud ^= true;
+					self.Owner.Shroud.Disabled = DisableShroud;
+					if (self.World.LocalPlayer == self.Owner)
+						self.World.RenderPlayer = DisableShroud ? null : self.Owner;
+
+					break;
+				}
 
 				case "DevPathDebug":
-					{
-						PathDebug ^= true;
-						break;
-					}
+				{
+					pathDebug ^= true;
+					break;
+				}
 
 				case "DevGiveExploration":
-					{
-						self.Owner.Shroud.ExploreAll(self.World);
-						break;
-					}
+				{
+					self.Owner.Shroud.ExploreAll();
+					break;
+				}
 
 				case "DevResetExploration":
-					{
-						self.Owner.Shroud.ResetExploration();
-						break;
-					}
+				{
+					self.Owner.Shroud.ResetExploration();
+					break;
+				}
 
 				case "DevUnlimitedPower":
-					{
-						UnlimitedPower ^= true;
-						break;
-					}
+				{
+					unlimitedPower ^= true;
+					break;
+				}
 
 				case "DevBuildAnywhere":
-					{
-						BuildAnywhere ^= true;
-						break;
-					}
+				{
+					buildAnywhere ^= true;
+					break;
+				}
 
 				default:
 					return;

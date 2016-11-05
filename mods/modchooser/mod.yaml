@@ -22,7 +22,7 @@ Assemblies:
 
 ChromeLayout:
 	modchooser|modchooser.yaml
-	modchooser|install.yaml
+	modchooser|content.yaml
 
 Notifications:
 	modchooser|notifications.yaml
@@ -31,6 +31,7 @@ LoadScreen: ModChooserLoadScreen
 	Image: ./mods/modchooser/chrome.png
 
 ChromeMetrics:
+	common|metrics.yaml
 	modchooser|metrics.yaml
 
 Fonts:

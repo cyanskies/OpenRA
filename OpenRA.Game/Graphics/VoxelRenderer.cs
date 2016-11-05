@@ -22,9 +22,9 @@ namespace OpenRA.Graphics
 		public readonly Sprite Sprite;
 		public readonly Sprite ShadowSprite;
 		public readonly float ShadowDirection;
-		public readonly float2[] ProjectedShadowBounds;
+		public readonly float3[] ProjectedShadowBounds;
 
-		public VoxelRenderProxy(Sprite sprite, Sprite shadowSprite, float2[] projectedShadowBounds, float shadowDirection)
+		public VoxelRenderProxy(Sprite sprite, Sprite shadowSprite, float3[] projectedShadowBounds, float shadowDirection)
 		{
 			Sprite = sprite;
 			ShadowSprite = shadowSprite;
@@ -94,6 +94,8 @@ namespace OpenRA.Graphics
 			var invShadowTransform = Util.MatrixInverse(shadowTransform);
 			var cameraTransform = Util.MakeFloatMatrix(camera.AsMatrix());
 			var invCameraTransform = Util.MatrixInverse(cameraTransform);
+			if (invCameraTransform == null)
+				throw new InvalidOperationException("Failed to invert the cameraTransform matrix during RenderAsync.");
 
 			// Sprite rectangle
 			var tl = new float2(float.MaxValue, float.MaxValue);
@@ -143,7 +145,7 @@ namespace OpenRA.Graphics
 
 			var shadowScreenTransform = Util.MatrixMultiply(cameraTransform, invShadowTransform);
 			var shadowGroundNormal = Util.MatrixVectorMultiply(shadowTransform, groundNormal);
-			var screenCorners = new float2[4];
+			var screenCorners = new float3[4];
 			for (var j = 0; j < 4; j++)
 			{
 				// Project to ground plane
@@ -152,7 +154,7 @@ namespace OpenRA.Graphics
 
 				// Rotate to camera-space
 				corners[j] = Util.MatrixVectorMultiply(shadowScreenTransform, corners[j]);
-				screenCorners[j] = new float2(corners[j][0], corners[j][1]);
+				screenCorners[j] = new float3(corners[j][0], corners[j][1], 0);
 			}
 
 			// Shadows are rendered at twice the resolution to reduce artifacts
@@ -161,8 +163,8 @@ namespace OpenRA.Graphics
 			CalculateSpriteGeometry(tl, br, 1, out spriteSize, out spriteOffset);
 			CalculateSpriteGeometry(stl, sbr, 2, out shadowSpriteSize, out shadowSpriteOffset);
 
-			var sprite = sheetBuilder.Allocate(spriteSize, spriteOffset);
-			var shadowSprite = sheetBuilder.Allocate(shadowSpriteSize, shadowSpriteOffset);
+			var sprite = sheetBuilder.Allocate(spriteSize, 0, spriteOffset);
+			var shadowSprite = sheetBuilder.Allocate(shadowSpriteSize, 0, shadowSpriteOffset);
 			var sb = sprite.Bounds;
 			var ssb = shadowSprite.Bounds;
 			var spriteCenter = new float2(sb.Left + sb.Width / 2, sb.Top + sb.Height / 2);
@@ -199,16 +201,20 @@ namespace OpenRA.Graphics
 					{
 						var rd = v.Voxel.RenderData(i);
 						var t = v.Voxel.TransformationMatrix(i, frame);
+						var it = Util.MatrixInverse(t);
+						if (it == null)
+							throw new InvalidOperationException("Failed to invert the transformed matrix of frame {0} during RenderAsync.".F(i));
 
 						// Transform light vector from shadow -> world -> limb coords
-						var lightDirection = ExtractRotationVector(Util.MatrixMultiply(Util.MatrixInverse(t), lightTransform));
+						var lightDirection = ExtractRotationVector(Util.MatrixMultiply(it, lightTransform));
 
 						Render(rd, Util.MatrixMultiply(transform, t), lightDirection,
 							lightAmbientColor, lightDiffuseColor, color.TextureMidIndex, normals.TextureMidIndex);
 
 						// Disable shadow normals by forcing zero diffuse and identity ambient light
-						Render(rd, Util.MatrixMultiply(shadow, t), lightDirection,
-							ShadowAmbient, ShadowDiffuse, shadowPalette.TextureMidIndex, normals.TextureMidIndex);
+						if (v.ShowShadow)
+							Render(rd, Util.MatrixMultiply(shadow, t), lightDirection,
+								ShadowAmbient, ShadowDiffuse, shadowPalette.TextureMidIndex, normals.TextureMidIndex);
 					}
 				}
 			}));
@@ -332,7 +338,7 @@ namespace OpenRA.Graphics
 
 			var size = new Size(renderer.SheetSize, renderer.SheetSize);
 			var framebuffer = renderer.Device.CreateFrameBuffer(size);
-			var sheet = new Sheet(SheetType.DualIndexed, framebuffer.Texture);
+			var sheet = new Sheet(SheetType.BGRA, framebuffer.Texture);
 			mappedBuffers.Add(sheet, framebuffer);
 
 			return sheet;

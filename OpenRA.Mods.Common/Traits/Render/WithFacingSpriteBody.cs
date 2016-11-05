@@ -9,12 +9,13 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Graphics;
 using OpenRA.Traits;
 
-namespace OpenRA.Mods.Common.Traits
+namespace OpenRA.Mods.Common.Traits.Render
 {
 	public class WithFacingSpriteBodyInfo : WithSpriteBodyInfo, Requires<BodyOrientationInfo>, Requires<IFacingInfo>
 	{
@@ -22,13 +23,10 @@ namespace OpenRA.Mods.Common.Traits
 
 		public override IEnumerable<IActorPreview> RenderPreviewSprites(ActorPreviewInitializer init, RenderSpritesInfo rs, string image, int facings, PaletteReference p)
 		{
-			var ifacing = init.Actor.TraitInfoOrDefault<IFacingInfo>();
-			var facing = ifacing != null ? init.Contains<FacingInit>() ? init.Get<FacingInit, int>() : ifacing.GetInitialFacing() : 0;
-
-			var anim = new Animation(init.World, image, () => facing);
+			var anim = new Animation(init.World, image, init.GetFacing());
 			anim.PlayRepeating(RenderSprites.NormalizeSequence(anim, init.GetDamageState(), Sequence));
 
-			yield return new SpriteActorPreview(anim, WVec.Zero, 0, p, rs.Scale);
+			yield return new SpriteActorPreview(anim, () => WVec.Zero, () => 0, p, rs.Scale);
 		}
 	}
 

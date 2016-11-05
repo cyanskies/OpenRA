@@ -120,19 +120,23 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				noexplorationButton.OnClick = () =>
 				world.IssueOrder(new Order("DevResetExploration", world.LocalPlayer.PlayerActor, false));
 
-			var dbgOverlay = world.WorldActor.TraitOrDefault<PathfinderDebugOverlay>();
-			var showAstarCostCheckbox = widget.GetOrNull<CheckboxWidget>("SHOW_ASTAR");
-			if (showAstarCostCheckbox != null)
-			{
-				showAstarCostCheckbox.IsChecked = () => dbgOverlay != null ? dbgOverlay.Visible : false;
-				showAstarCostCheckbox.OnClick = () => { if (dbgOverlay != null) dbgOverlay.Visible ^= true; };
-			}
-
 			var showActorTagsCheckbox = widget.GetOrNull<CheckboxWidget>("SHOW_ACTOR_TAGS");
 			if (showActorTagsCheckbox != null)
 			{
 				showActorTagsCheckbox.IsChecked = () => devTrait.ShowActorTags;
 				showActorTagsCheckbox.OnClick = () => devTrait.ShowActorTags ^= true;
+			}
+
+			var showCustomTerrainCheckbox = widget.GetOrNull<CheckboxWidget>("SHOW_CUSTOMTERRAIN_OVERLAY");
+			if (showCustomTerrainCheckbox != null)
+			{
+				var customTerrainDebugTrait = world.WorldActor.TraitOrDefault<CustomTerrainDebugOverlay>();
+				showCustomTerrainCheckbox.Disabled = customTerrainDebugTrait == null;
+				if (customTerrainDebugTrait != null)
+				{
+					showCustomTerrainCheckbox.IsChecked = () => customTerrainDebugTrait.Enabled;
+					showCustomTerrainCheckbox.OnClick = () => customTerrainDebugTrait.Enabled ^= true;
+				}
 			}
 		}
 

@@ -7,7 +7,7 @@ Windows
 =======
 
 * [Windows PowerShell >= 4.0](http://microsoft.com/powershell)
-* [.NET Framework >= 4.0 (Client Profile)](http://www.microsoft.com/en-us/download/details.aspx?id=17113)
+* [.NET Framework >= 4.5 (Client Profile)](http://www.microsoft.com/en-us/download/details.aspx?id=30653)
 * [SDL 2](http://www.libsdl.org/download-2.0.php) (included)
 * [FreeType](http://gnuwin32.sourceforge.net/packages/freetype.htm) (included)
 * [zlib](http://gnuwin32.sourceforge.net/packages/zlib.htm) (included)
@@ -42,6 +42,7 @@ Debian/Ubuntu
 * libsdl2-2.0-0
 * xdg-utils
 * zenity
+* curl
 
 openSUSE
 --------
@@ -54,6 +55,7 @@ openSUSE
 * lua51
 * xdg-utils
 * zenity
+* curl
 
 Gentoo
 ------
@@ -69,3 +71,13 @@ Gentoo
 * dev-lang/lua-5.1.5
 * x11-misc/xdg-utils
 * gnome-extra/zenity
+* net-misc/curl
+
+OSX
+=====
+
+Use `make dependencies` to map the native libraries to your system.
+
+To compile OpenRA, run `make` from the command line.
+
+Run with `mono --debug OpenRA.Game.exe`.

@@ -1,6 +1,6 @@
-Difficulty = Map.Difficulty
+Difficulty = Map.LobbyOption("difficulty")
 
-if Difficulty == "Easy" then
+if Difficulty == "easy" then
 	AttackAtFrameIncrement = DateTime.Seconds(22)
 	AttackAtFrameIncrementInf = DateTime.Seconds(16)
 	TimerTicks = DateTime.Minutes(15)
@@ -8,7 +8,7 @@ if Difficulty == "Easy" then
 	DamageModifier = 0.5
 	LongBowReinforcements = { "heli", "heli" }
 	ParadropArtillery = true
-elseif Difficulty == "Medium" then
+elseif Difficulty == "normal" then
 	AttackAtFrameIncrement = DateTime.Seconds(18)
 	AttackAtFrameIncrementInf = DateTime.Seconds(12)
 	TimerTicks = DateTime.Minutes(20)
@@ -16,7 +16,7 @@ elseif Difficulty == "Medium" then
 	MoreParas = true
 	DamageModifier = 0.75
 	LongBowReinforcements = { "heli", "heli" }
-else --Difficulty == "Hard"
+else --Difficulty == "hard"
 	AttackAtFrameIncrement = DateTime.Seconds(14)
 	AttackAtFrameIncrementInf = DateTime.Seconds(8)
 	TimerTicks = DateTime.Minutes(25)
@@ -66,45 +66,38 @@ SovietBuildings = { Barrack1, SubPen, RadarDome, AdvancedPowerPlant1, AdvancedPo
 IdleTrigger = function(units, dest)
 	Utils.Do(units, function(unit)
 
-		Trigger.OnIdle(unit, function()
-			local bool = Utils.All(units, function(unit) return unit.IsIdle end)
-			if bool then
-				Utils.Do(units, function(unit)
-					if not unit.IsDead then
-						Trigger.ClearAll(unit)
-						Trigger.AfterDelay(0, function()
-							if not unit.IsDead then
-								if dest then unit.AttackMove(dest, 3) end
-								Trigger.OnIdle(unit, unit.Hunt)
-								Trigger.OnCapture(unit, function()
-									Trigger.ClearAll(unit)
-								end)
-							end
-						end)
-					end
-				end)
-			end
-		end)
+		if not unit.IsDead then
+			Trigger.OnIdle(unit, function()
+				local bool = Utils.All(units, function(unit) return unit.IsIdle end)
+				if bool then
+					SetupHuntTrigger(units)
+				end
+			end)
 
-		Trigger.OnDamaged(unit, function()
-			Utils.Do(units, function(unit)
+			Trigger.OnDamaged(unit, function()
+				SetupHuntTrigger(units)
+			end)
+
+			Trigger.OnCapture(unit, function()
+				Trigger.ClearAll(unit)
+			end)
+		end
+	end)
+end
+
+SetupHuntTrigger = function(units)
+	Utils.Do(units, function(unit)
+		if not unit.IsDead then
+			Trigger.ClearAll(unit)
+			Trigger.AfterDelay(0, function()
 				if not unit.IsDead then
-					Trigger.ClearAll(unit)
-					Trigger.AfterDelay(0, function()
-						if not unit.IsDead then
-							Trigger.OnIdle(unit, unit.Hunt)
-							Trigger.OnCapture(unit, function()
-								Trigger.ClearAll(unit)
-							end)
-						end
+					Trigger.OnIdle(unit, unit.Hunt)
+					Trigger.OnCapture(unit, function()
+						Trigger.ClearAll(unit)
 					end)
 				end
 			end)
-		end)
-
-		Trigger.OnCapture(unit, function()
-			Trigger.ClearAll(unit)
-		end)
+		end
 	end)
 end
 

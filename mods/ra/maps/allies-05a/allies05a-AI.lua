@@ -158,7 +158,7 @@ InitProductionBuildings = function()
 		end)
 	end
 
-	if Map.Difficulty ~= "Easy" then
+	if Map.LobbyOption("difficulty") ~= "easy" then
 
 		if not Airfield1.IsDead then
 			Trigger.OnKilled(Airfield1, function()
@@ -243,27 +243,34 @@ ProduceAircraft = function()
 	end
 
 	ussr.Build(SovietAircraftType, function(units)
-		Yaks[#Yaks + 1] = units[1]
+		local yak = units[1]
+		Yaks[#Yaks + 1] = yak
 
-		if #Yaks == 2 then
-			Trigger.OnKilled(units[1], ProduceAircraft)
-		else
+		Trigger.OnKilled(yak, ProduceAircraft)
+		if #Yaks == 1 then
 			Trigger.AfterDelay(DateTime.Minutes(1), ProduceAircraft)
 		end
 
-		local target = nil
-		Trigger.OnIdle(units[1], function()
-			if not target or target.IsDead or (not target.IsInWorld) then
+		TargetAndAttack(yak)
+	end)
+end
 
-				local enemies = Utils.Where(Map.ActorsInWorld, function(self) return self.Owner == greece and self.HasProperty("Health") end)
-				if #enemies > 0 then
-					target = Utils.Random(enemies)
-					units[1].Attack(target)
-				end
-			else
-				units[1].Attack(target)
-			end
-		end)
+TargetAndAttack = function(yak, target)
+	if not target or target.IsDead or (not target.IsInWorld) then
+		local enemies = Utils.Where(Map.ActorsInWorld, function(self) return self.Owner == greece and self.HasProperty("Health") and yak.CanTarget(self) end)
+		if #enemies > 0 then
+			target = Utils.Random(enemies)
+		end
+	end
+
+	if target and yak.AmmoCount() > 0 and yak.CanTarget(target) then
+		yak.Attack(target)
+	else
+		yak.ReturnToBase()
+	end
+
+	yak.CallFunc(function()
+		TargetAndAttack(yak, target)
 	end)
 end
 
@@ -276,7 +283,7 @@ ActivateAI = function()
 	Trigger.AfterDelay(DateTime.Minutes(5), function()
 		ProduceInfantry()
 		ProduceVehicles()
-		if false and AirAttacks then -- disable air strikes for now since they are broken
+		if AirAttacks then
 			Trigger.AfterDelay(DateTime.Minutes(3), ProduceAircraft)
 		end
 	end)

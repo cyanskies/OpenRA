@@ -14,6 +14,7 @@ using System.Drawing;
 using System.Linq;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Graphics;
+using OpenRA.Mods.Common.Traits.Render;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
@@ -140,7 +141,7 @@ namespace OpenRA.Mods.Common.Traits
 					world.CancelInputMode();
 			}
 
-			public IEnumerable<IRenderable> RenderAfterWorld(WorldRenderer wr, World world)
+			public IEnumerable<IRenderable> RenderAboveShroud(WorldRenderer wr, World world)
 			{
 				var xy = wr.Viewport.ViewToWorld(Viewport.LastMousePos);
 				foreach (var unit in power.UnitsInRange(xy))

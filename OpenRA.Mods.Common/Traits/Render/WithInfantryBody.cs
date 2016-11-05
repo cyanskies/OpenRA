@@ -9,13 +9,14 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Graphics;
 using OpenRA.Traits;
 
-namespace OpenRA.Mods.Common.Traits
+namespace OpenRA.Mods.Common.Traits.Render
 {
 	public class WithInfantryBodyInfo : UpgradableTraitInfo, IRenderActorPreviewSpritesInfo, Requires<IMoveInfo>, Requires<RenderSpritesInfo>
 	{
@@ -23,22 +24,31 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly int MaxIdleDelay = 110;
 
 		[SequenceReference] public readonly string MoveSequence = "run";
-		[SequenceReference] public readonly string AttackSequence = null;
+		[SequenceReference] public readonly string DefaultAttackSequence = null;
+
+		// TODO: [SequenceReference] isn't smart enough to use Dictionaries.
+		[Desc("Attack sequence to use for each armament.")]
+		[FieldLoader.LoadUsing("LoadWeaponSequences")]
+		public readonly Dictionary<string, string> AttackSequences = new Dictionary<string, string>();
 		[SequenceReference] public readonly string[] IdleSequences = { };
 		[SequenceReference] public readonly string[] StandSequences = { "stand" };
+
+		public static object LoadWeaponSequences(MiniYaml yaml)
+		{
+			var md = yaml.ToDictionary();
+
+			return md.ContainsKey("AttackSequences")
+				? md["AttackSequences"].ToDictionary(my => FieldLoader.GetValue<string>("(value)", my.Value))
+				: new Dictionary<string, string>();
+		}
 
 		public override object Create(ActorInitializer init) { return new WithInfantryBody(init, this); }
 
 		public IEnumerable<IActorPreview> RenderPreviewSprites(ActorPreviewInitializer init, RenderSpritesInfo rs, string image, int facings, PaletteReference p)
 		{
-			var facing = 0;
-			var ifacing = init.Actor.TraitInfoOrDefault<IFacingInfo>();
-			if (ifacing != null)
-				facing = init.Contains<FacingInit>() ? init.Get<FacingInit, int>() : ifacing.GetInitialFacing();
-
-			var anim = new Animation(init.World, image, () => facing);
+			var anim = new Animation(init.World, image, init.GetFacing());
 			anim.PlayRepeating(RenderSprites.NormalizeSequence(anim, init.GetDamageState(), StandSequences.First()));
-			yield return new SpriteActorPreview(anim, WVec.Zero, 0, p, rs.Scale);
+			yield return new SpriteActorPreview(anim, () => WVec.Zero, () => 0, p, rs.Scale);
 		}
 	}
 
@@ -100,19 +110,25 @@ namespace OpenRA.Mods.Common.Traits
 			return !IsModifyingSequence;
 		}
 
-		public void Attacking(Actor self, Target target)
+		public void Attacking(Actor self, Target target, Armament a)
 		{
-			if (!string.IsNullOrEmpty(Info.AttackSequence) && DefaultAnimation.HasSequence(NormalizeInfantrySequence(self, Info.AttackSequence)))
+			string sequence;
+			if (!Info.AttackSequences.TryGetValue(a.Info.Name, out sequence))
+				sequence = Info.DefaultAttackSequence;
+
+			if (!string.IsNullOrEmpty(sequence) && DefaultAnimation.HasSequence(NormalizeInfantrySequence(self, sequence)))
 			{
 				state = AnimationState.Attacking;
-				DefaultAnimation.PlayThen(NormalizeInfantrySequence(self, Info.AttackSequence), () => state = AnimationState.Idle);
+				DefaultAnimation.PlayThen(NormalizeInfantrySequence(self, sequence), () => state = AnimationState.Idle);
 			}
 		}
 
-		public void Attacking(Actor self, Target target, Armament a, Barrel barrel)
+		void INotifyAttack.PreparingAttack(Actor self, Target target, Armament a, Barrel barrel)
 		{
-			Attacking(self, target);
+			Attacking(self, target, a);
 		}
+
+		void INotifyAttack.Attacking(Actor self, Target target, Armament a, Barrel barrel) { }
 
 		public virtual void Tick(Actor self)
 		{

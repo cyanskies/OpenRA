@@ -16,7 +16,7 @@ using OpenRA.Graphics;
 using OpenRA.Mods.Common.Graphics;
 using OpenRA.Traits;
 
-namespace OpenRA.Mods.Common.Traits
+namespace OpenRA.Mods.Common.Traits.Render
 {
 	[RequireExplicitImplementation]
 	interface IWallConnectorInfo : ITraitInfoInterface
@@ -72,7 +72,7 @@ namespace OpenRA.Mods.Common.Traits
 			var anim = new Animation(init.World, image, () => 0);
 			anim.PlayFetchIndex(RenderSprites.NormalizeSequence(anim, init.GetDamageState(), Sequence), () => adjacent);
 
-			yield return new SpriteActorPreview(anim, WVec.Zero, 0, p, rs.Scale);
+			yield return new SpriteActorPreview(anim, () => WVec.Zero, () => 0, p, rs.Scale);
 		}
 
 		string IWallConnectorInfo.GetWallConnectionType()
@@ -101,12 +101,12 @@ namespace OpenRA.Mods.Common.Traits
 			wallInfo = info;
 		}
 
-		public override void DamageStateChanged(Actor self, AttackInfo e)
+		protected override void DamageStateChanged(Actor self)
 		{
 			DefaultAnimation.PlayFetchIndex(NormalizeSequence(self, Info.Sequence), () => adjacent);
 		}
 
-		public void Tick(Actor self)
+		void ITick.Tick(Actor self)
 		{
 			if (!dirty)
 				return;
@@ -136,10 +136,13 @@ namespace OpenRA.Mods.Common.Traits
 			dirty = false;
 		}
 
-		public override void BuildingComplete(Actor self)
+		protected override void OnBuildComplete(Actor self)
 		{
 			DefaultAnimation.PlayFetchIndex(NormalizeSequence(self, Info.Sequence), () => adjacent);
 			UpdateNeighbours(self);
+
+			// Set the initial animation frame before the render tick (for frozen actor previews)
+			self.World.AddFrameEndTask(_ => DefaultAnimation.Tick());
 		}
 
 		static void UpdateNeighbours(Actor self)

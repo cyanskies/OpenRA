@@ -10,16 +10,17 @@
 #endregion
 
 using OpenRA.Mods.Common.Traits;
+using OpenRA.Mods.Common.Traits.Render;
 using OpenRA.Traits;
 
-namespace OpenRA.Mods.Cnc.Traits
+namespace OpenRA.Mods.Cnc.Traits.Render
 {
 	[Desc("Building animation to play when ProductionAirdrop is used to deliver units.")]
 	public class WithDeliveryAnimationInfo : ITraitInfo, Requires<WithSpriteBodyInfo>
 	{
-		public readonly string ActiveSequence = "active";
+		[SequenceReference] public readonly string ActiveSequence = "active";
 
-		public readonly string IdleSequence = "idle";
+		[SequenceReference] public readonly string IdleSequence = "idle";
 
 		public object Create(ActorInitializer init) { return new WithDeliveryAnimation(init.Self, this); }
 	}

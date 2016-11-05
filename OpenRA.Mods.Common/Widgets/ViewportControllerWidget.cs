@@ -13,15 +13,18 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Graphics;
+using OpenRA.Mods.Common.Traits;
 using OpenRA.Traits;
 using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Widgets
 {
-	public enum WorldTooltipType { None, Unexplored, Actor, FrozenActor }
+	public enum WorldTooltipType { None, Unexplored, Actor, FrozenActor, Resource }
 
 	public class ViewportControllerWidget : Widget
 	{
+		readonly ResourceLayer resourceLayer;
+
 		public readonly string TooltipTemplate = "WORLD_TOOLTIP";
 		public readonly string TooltipContainer;
 		Lazy<TooltipContainerWidget> tooltipContainer;
@@ -30,11 +33,14 @@ namespace OpenRA.Mods.Common.Widgets
 		public ITooltip ActorTooltip { get; private set; }
 		public IProvideTooltipInfo[] ActorTooltipExtra { get; private set; }
 		public FrozenActor FrozenActorTooltip { get; private set; }
+		public ResourceType ResourceTooltip { get; private set; }
 
 		public int EdgeScrollThreshold = 15;
 		public int EdgeCornerScrollThreshold = 35;
 
 		int2? joystickScrollStart, joystickScrollEnd;
+		int2? standardScrollStart;
+		bool isStandardScrolling;
 
 		static readonly Dictionary<ScrollDirection, string> ScrollCursors = new Dictionary<ScrollDirection, string>
 		{
@@ -72,6 +78,29 @@ namespace OpenRA.Mods.Common.Widgets
 		ScrollDirection edgeDirections;
 		World world;
 		WorldRenderer worldRenderer;
+		WPos?[] viewPortBookmarkSlots = new WPos?[4];
+
+		void SaveBookmark(int index, WPos position)
+		{
+			viewPortBookmarkSlots[index] = position;
+		}
+
+		void SaveCurrentPositionToBookmark(int index)
+		{
+			SaveBookmark(index, worldRenderer.Viewport.CenterPosition);
+		}
+
+		WPos? JumpToBookmark(int index)
+		{
+			return viewPortBookmarkSlots[index];
+		}
+
+		void JumpToSavedBookmark(int index)
+		{
+			var bookmark = JumpToBookmark(index);
+			if (bookmark != null)
+				worldRenderer.Viewport.Center((WPos)bookmark);
+		}
 
 		[ObjectCreator.UseCtor]
 		public ViewportControllerWidget(World world, WorldRenderer worldRenderer)
@@ -80,6 +109,8 @@ namespace OpenRA.Mods.Common.Widgets
 			this.worldRenderer = worldRenderer;
 			tooltipContainer = Exts.Lazy(() =>
 				Ui.Root.Get<TooltipContainerWidget>(TooltipContainer));
+
+			resourceLayer = world.WorldActor.TraitOrDefault<ResourceLayer>();
 		}
 
 		public override void MouseEntered()
@@ -99,6 +130,7 @@ namespace OpenRA.Mods.Common.Widgets
 			tooltipContainer.Value.RemoveTooltip();
 		}
 
+		long lastScrollTime = 0;
 		public override void Draw()
 		{
 			if (IsJoystickScrolling)
@@ -108,6 +140,30 @@ namespace OpenRA.Mods.Common.Widgets
 
 				var scroll = (joystickScrollEnd.Value - joystickScrollStart.Value).ToFloat2() * rate;
 				worldRenderer.Viewport.Scroll(scroll, false);
+			}
+			else
+			{
+				edgeDirections = ScrollDirection.None;
+				if (Game.Settings.Game.ViewportEdgeScroll && Game.HasInputFocus)
+					edgeDirections = CheckForDirections();
+
+				if (keyboardDirections != ScrollDirection.None || edgeDirections != ScrollDirection.None)
+				{
+					var scroll = float2.Zero;
+
+					foreach (var kv in ScrollOffsets)
+						if (keyboardDirections.Includes(kv.Key) || edgeDirections.Includes(kv.Key))
+							scroll += kv.Value;
+
+					// Scroll rate is defined for a 40ms interval
+					var deltaScale = Math.Min(Game.RunTime - lastScrollTime, 25f);
+
+					var length = Math.Max(1, scroll.Length);
+					scroll *= (deltaScale / (25 * length)) * Game.Settings.Game.ViewportEdgeScrollStep;
+
+					worldRenderer.Viewport.Scroll(scroll, false);
+					lastScrollTime = Game.RunTime;
+				}
 			}
 
 			UpdateMouseover();
@@ -135,9 +191,13 @@ namespace OpenRA.Mods.Common.Widgets
 
 			if (underCursor != null)
 			{
-				ActorTooltip = underCursor.TraitsImplementing<ITooltip>().First();
-				ActorTooltipExtra = underCursor.TraitsImplementing<IProvideTooltipInfo>().ToArray();
-				TooltipType = WorldTooltipType.Actor;
+				ActorTooltip = underCursor.TraitsImplementing<ITooltip>().FirstOrDefault(Exts.IsTraitEnabled);
+				if (ActorTooltip != null)
+				{
+					ActorTooltipExtra = underCursor.TraitsImplementing<IProvideTooltipInfo>().ToArray();
+					TooltipType = WorldTooltipType.Actor;
+				}
+
 				return;
 			}
 
@@ -148,25 +208,36 @@ namespace OpenRA.Mods.Common.Widgets
 			if (frozen != null)
 			{
 				var actor = frozen.Actor;
-				if (actor != null && actor.TraitsImplementing<IVisibilityModifier>().Any(t => !t.IsVisible(actor, world.RenderPlayer)))
+				if (actor != null && actor.TraitsImplementing<IVisibilityModifier>().All(t => t.IsVisible(actor, world.RenderPlayer)))
+				{
+					FrozenActorTooltip = frozen;
+					if (frozen.Actor != null)
+						ActorTooltipExtra = frozen.Actor.TraitsImplementing<IProvideTooltipInfo>().ToArray();
+					TooltipType = WorldTooltipType.FrozenActor;
 					return;
+				}
+			}
 
-				FrozenActorTooltip = frozen;
-				if (frozen.Actor != null)
-					ActorTooltipExtra = frozen.Actor.TraitsImplementing<IProvideTooltipInfo>().ToArray();
-				TooltipType = WorldTooltipType.FrozenActor;
+			if (resourceLayer != null)
+			{
+				var resource = resourceLayer.GetRenderedResource(cell);
+				if (resource != null)
+				{
+					TooltipType = WorldTooltipType.Resource;
+					ResourceTooltip = resource;
+				}
 			}
 		}
 
 		public override string GetCursor(int2 pos)
 		{
-			if (!IsJoystickScrolling &&
-			    (!Game.Settings.Game.ViewportEdgeScroll || Ui.MouseOverWidget != this))
+			if (!(IsJoystickScrolling || isStandardScrolling) &&
+				(!Game.Settings.Game.ViewportEdgeScroll || Ui.MouseOverWidget != this))
 				return null;
 
 			var blockedDirections = worldRenderer.Viewport.GetBlockedDirections();
 
-			if (IsJoystickScrolling)
+			if (IsJoystickScrolling || isStandardScrolling)
 			{
 				foreach (var dir in JoystickCursors)
 					if (blockedDirections.Includes(dir.Key))
@@ -186,7 +257,7 @@ namespace OpenRA.Mods.Common.Widgets
 			get
 			{
 				return joystickScrollStart.HasValue && joystickScrollEnd.HasValue &&
-					(joystickScrollStart.Value - joystickScrollEnd.Value).Length > Game.Settings.Game.JoystickScrollDeadzone;
+					(joystickScrollStart.Value - joystickScrollEnd.Value).Length > Game.Settings.Game.MouseScrollDeadzone;
 			}
 		}
 
@@ -225,32 +296,50 @@ namespace OpenRA.Mods.Common.Widgets
 				return true;
 			}
 
-			var scrolltype = Game.Settings.Game.MouseScroll;
-			if (scrolltype == MouseScrollType.Disabled)
+			var scrollType = MouseScrollType.Disabled;
+
+			if (mi.Button == MouseButton.Middle || mi.Button == (MouseButton.Left | MouseButton.Right))
+				scrollType = Game.Settings.Game.MiddleMouseScroll;
+			else if (mi.Button == MouseButton.Right)
+				scrollType = Game.Settings.Game.RightMouseScroll;
+
+			if (scrollType == MouseScrollType.Disabled)
 				return false;
 
-			if (scrolltype == MouseScrollType.Standard || scrolltype == MouseScrollType.Inverted)
+			if (scrollType == MouseScrollType.Standard || scrollType == MouseScrollType.Inverted)
 			{
-				if (mi.Event == MouseInputEvent.Move &&
-					(mi.Button == MouseButton.Middle || mi.Button == (MouseButton.Left | MouseButton.Right)))
+				if (mi.Event == MouseInputEvent.Down && !isStandardScrolling)
+					standardScrollStart = mi.Location;
+				else if (mi.Event == MouseInputEvent.Move && (isStandardScrolling ||
+					(standardScrollStart.HasValue && ((standardScrollStart.Value - mi.Location).Length > Game.Settings.Game.MouseScrollDeadzone))))
 				{
-					var d = scrolltype == MouseScrollType.Inverted ? -1 : 1;
+					isStandardScrolling = true;
+					var d = scrollType == MouseScrollType.Inverted ? -1 : 1;
 					worldRenderer.Viewport.Scroll((Viewport.LastMousePos - mi.Location) * d, false);
 					return true;
 				}
+				else if (mi.Event == MouseInputEvent.Up)
+				{
+					var wasStandardScrolling = isStandardScrolling;
+					isStandardScrolling = false;
+					standardScrollStart = null;
+
+					if (wasStandardScrolling)
+						return true;
+				}
 			}
 
-			// Tiberian Sun style right-click-and-drag scrolling
-			if (scrolltype == MouseScrollType.Joystick)
+			// Tiberian Sun style click-and-drag scrolling
+			if (scrollType == MouseScrollType.Joystick)
 			{
-				if (mi.Button == MouseButton.Right && mi.Event == MouseInputEvent.Down)
+				if (mi.Event == MouseInputEvent.Down)
 				{
 					if (!TakeMouseFocus(mi))
 						return false;
 					joystickScrollStart = mi.Location;
 				}
 
-				if (mi.Button == MouseButton.Right && mi.Event == MouseInputEvent.Up)
+				if (mi.Event == MouseInputEvent.Up)
 				{
 					var wasJoystickScrolling = IsJoystickScrolling;
 
@@ -261,10 +350,8 @@ namespace OpenRA.Mods.Common.Widgets
 						return true;
 				}
 
-				if (mi.Event == MouseInputEvent.Move && mi.Button == MouseButton.Right && joystickScrollStart.HasValue)
-				{
+				if (mi.Event == MouseInputEvent.Move && joystickScrollStart.HasValue)
 					joystickScrollEnd = mi.Location;
-				}
 			}
 
 			return false;
@@ -305,28 +392,78 @@ namespace OpenRA.Mods.Common.Widgets
 				return true;
 			}
 
-			return false;
-		}
-
-		public override void Tick()
-		{
-			edgeDirections = ScrollDirection.None;
-			if (Game.Settings.Game.ViewportEdgeScroll && Game.HasInputFocus)
-				edgeDirections = CheckForDirections();
-
-			if (keyboardDirections != ScrollDirection.None || edgeDirections != ScrollDirection.None)
+			if (key == ks.MapPushTop)
 			{
-				var scroll = float2.Zero;
-
-				foreach (var kv in ScrollOffsets)
-					if (keyboardDirections.Includes(kv.Key) || edgeDirections.Includes(kv.Key))
-						scroll += kv.Value;
-
-				var length = Math.Max(1, scroll.Length);
-				scroll *= (1f / length) * Game.Settings.Game.ViewportEdgeScrollStep;
-
-				worldRenderer.Viewport.Scroll(scroll, false);
+				worldRenderer.Viewport.Center(new WPos(worldRenderer.Viewport.CenterPosition.X, 0, 0));
+				return false;
 			}
+
+			if (key == ks.MapPushBottom)
+			{
+				worldRenderer.Viewport.Center(new WPos(worldRenderer.Viewport.CenterPosition.X, worldRenderer.World.Map.ProjectedBottomRight.Y, 0));
+				return false;
+			}
+
+			if (key == ks.MapPushLeftEdge)
+			{
+				worldRenderer.Viewport.Center(new WPos(0, worldRenderer.Viewport.CenterPosition.Y, 0));
+				return false;
+			}
+
+			if (key == ks.MapPushRightEdge)
+			{
+				worldRenderer.Viewport.Center(new WPos(worldRenderer.World.Map.ProjectedBottomRight.X, worldRenderer.Viewport.CenterPosition.Y, 0));
+			}
+
+			if (key == ks.ViewPortBookmarkSaveSlot1)
+			{
+				SaveCurrentPositionToBookmark(0);
+				return false;
+			}
+
+			if (key == ks.ViewPortBookmarkSaveSlot2)
+			{
+				SaveCurrentPositionToBookmark(1);
+				return false;
+			}
+
+			if (key == ks.ViewPortBookmarkSaveSlot3)
+			{
+				SaveCurrentPositionToBookmark(2);
+				return false;
+			}
+
+			if (key == ks.ViewPortBookmarkSaveSlot4)
+			{
+				SaveCurrentPositionToBookmark(3);
+				return false;
+			}
+
+			if (key == ks.ViewPortBookmarkUseSlot1)
+			{
+				JumpToSavedBookmark(0);
+				return false;
+			}
+
+			if (key == ks.ViewPortBookmarkUseSlot2)
+			{
+				JumpToSavedBookmark(1);
+				return false;
+			}
+
+			if (key == ks.ViewPortBookmarkUseSlot3)
+			{
+				JumpToSavedBookmark(2);
+				return false;
+			}
+
+			if (key == ks.ViewPortBookmarkUseSlot4)
+			{
+				JumpToSavedBookmark(3);
+				return false;
+			}
+
+			return false;
 		}
 
 		ScrollDirection CheckForDirections()

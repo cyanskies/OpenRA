@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Effects;
 using OpenRA.Mods.Common.Traits;
+using OpenRA.Mods.Common.Traits.Radar;
 using OpenRA.Mods.RA.Effects;
 using OpenRA.Traits;
 
@@ -25,23 +26,38 @@ namespace OpenRA.Mods.RA.Traits
 
 		public readonly string DoorImage = "atek";
 		[SequenceReference("DoorImage")] public readonly string DoorSequence = "active";
-		[PaletteReference] public readonly string DoorPalette = "effect";
+
+		[Desc("Palette to use for rendering the launch animation")]
+		[PaletteReference("DoorPaletteIsPlayerPalette")] public readonly string DoorPalette = "player";
+
+		[Desc("Custom palette is a player palette BaseName")]
+		public readonly bool DoorPaletteIsPlayerPalette = true;
 
 		public readonly string SatelliteImage = "sputnik";
 		[SequenceReference("SatelliteImage")] public readonly string SatelliteSequence = "idle";
-		[PaletteReference] public readonly string SatellitePalette = "effect";
+
+		[Desc("Palette to use for rendering the satellite projectile")]
+		[PaletteReference("SatellitePaletteIsPlayerPalette")] public readonly string SatellitePalette = "player";
+
+		[Desc("Custom palette is a player palette BaseName")]
+		public readonly bool SatellitePaletteIsPlayerPalette = true;
+
+		[Desc("Requires an actor with an online `ProvidesRadar` to show GPS dots.")]
+		public readonly bool RequiresActiveRadar = true;
 
 		public override object Create(ActorInitializer init) { return new GpsPower(init.Self, this); }
 	}
 
-	class GpsPower : SupportPower, INotifyKilled, INotifySold, INotifyOwnerChanged
+	class GpsPower : SupportPower, INotifyKilled, INotifySold, INotifyOwnerChanged, ITick
 	{
+		readonly Actor self;
 		readonly GpsPowerInfo info;
 		GpsWatcher owner;
 
 		public GpsPower(Actor self, GpsPowerInfo info)
 			: base(self, info)
 		{
+			this.self = self;
 			this.info = info;
 			owner = self.Owner.PlayerActor.Trait<GpsWatcher>();
 			owner.GpsAdd(self);
@@ -59,6 +75,8 @@ namespace OpenRA.Mods.RA.Traits
 			self.World.AddFrameEndTask(w =>
 			{
 				Game.Sound.PlayToPlayer(self.Owner, Info.LaunchSound);
+				Game.Sound.PlayNotification(self.World.Map.Rules, self.Owner, "Speech",
+					Info.LaunchSpeechNotification, self.Owner.Faction.InternalName);
 
 				w.Add(new SatelliteLaunch(self, info));
 
@@ -66,10 +84,10 @@ namespace OpenRA.Mods.RA.Traits
 			});
 		}
 
-		public void Killed(Actor self, AttackInfo e) { RemoveGps(self); }
+		void INotifyKilled.Killed(Actor self, AttackInfo e) { RemoveGps(self); }
 
-		public void Selling(Actor self) { }
-		public void Sold(Actor self) { RemoveGps(self); }
+		void INotifySold.Selling(Actor self) { }
+		void INotifySold.Sold(Actor self) { RemoveGps(self); }
 
 		void RemoveGps(Actor self)
 		{
@@ -77,11 +95,28 @@ namespace OpenRA.Mods.RA.Traits
 			owner.GpsRemove(self);
 		}
 
-		public void OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
+		void INotifyOwnerChanged.OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
 		{
 			RemoveGps(self);
 			owner = newOwner.PlayerActor.Trait<GpsWatcher>();
 			owner.GpsAdd(self);
+		}
+
+		bool NoActiveRadar { get { return !self.World.ActorsHavingTrait<ProvidesRadar>(r => r.IsActive).Any(a => a.Owner == self.Owner); } }
+		bool wasDisabled;
+
+		void ITick.Tick(Actor self)
+		{
+			if (!wasDisabled && (self.IsDisabled() || (info.RequiresActiveRadar && NoActiveRadar)))
+			{
+				wasDisabled = true;
+				RemoveGps(self);
+			}
+			else if (wasDisabled && !self.IsDisabled() && !(info.RequiresActiveRadar && NoActiveRadar))
+			{
+				wasDisabled = false;
+				owner.GpsAdd(self);
+			}
 		}
 	}
 }

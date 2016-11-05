@@ -19,10 +19,16 @@ namespace OpenRA.Mods.Common.Activities
 	public class HeliReturnToBase : Activity
 	{
 		readonly Aircraft heli;
+		readonly bool alwaysLand;
+		readonly bool abortOnResupply;
+		Actor dest;
 
-		public HeliReturnToBase(Actor self)
+		public HeliReturnToBase(Actor self, bool abortOnResupply, Actor dest = null, bool alwaysLand = true)
 		{
 			heli = self.Trait<Aircraft>();
+			this.alwaysLand = alwaysLand;
+			this.abortOnResupply = abortOnResupply;
+			this.dest = dest;
 		}
 
 		public Actor ChooseHelipad(Actor self)
@@ -37,32 +43,69 @@ namespace OpenRA.Mods.Common.Activities
 			if (IsCanceled)
 				return NextActivity;
 
-			var dest = ChooseHelipad(self);
+			if (dest == null || Reservable.IsReserved(dest))
+				dest = ChooseHelipad(self);
+
 			var initialFacing = heli.Info.InitialFacing;
 
 			if (dest == null)
 			{
 				var rearmBuildings = heli.Info.RearmBuildings;
 				var nearestHpad = self.World.ActorsHavingTrait<Reservable>()
-									.Where(a => a.Owner == self.Owner && rearmBuildings.Contains(a.Info.Name))
-									.ClosestTo(self);
+					.Where(a => a.Owner == self.Owner && rearmBuildings.Contains(a.Info.Name))
+					.ClosestTo(self);
 
 				if (nearestHpad == null)
 					return ActivityUtils.SequenceActivities(new Turn(self, initialFacing), new HeliLand(self, true), NextActivity);
 				else
-					return ActivityUtils.SequenceActivities(new HeliFly(self, Target.FromActor(nearestHpad)));
-			}
+				{
+					var distanceFromHelipad = (nearestHpad.CenterPosition - self.CenterPosition).HorizontalLength;
+					var distanceLength = heli.Info.WaitDistanceFromResupplyBase.Length;
 
-			heli.MakeReservation(dest);
+					// If no pad is available, move near one and wait
+					if (distanceFromHelipad > distanceLength)
+					{
+						var randomPosition = WVec.FromPDF(self.World.SharedRandom, 2) * distanceLength / 1024;
+
+						var target = Target.FromPos(nearestHpad.CenterPosition + randomPosition);
+
+						return ActivityUtils.SequenceActivities(new HeliFly(self, target, WDist.Zero, heli.Info.WaitDistanceFromResupplyBase), this);
+					}
+
+					return this;
+				}
+			}
 
 			var exit = dest.Info.TraitInfos<ExitInfo>().FirstOrDefault();
 			var offset = (exit != null) ? exit.SpawnOffset : WVec.Zero;
 
+			if (ShouldLandAtBuilding(self, dest))
+			{
+				heli.MakeReservation(dest);
+
+				return ActivityUtils.SequenceActivities(
+					new HeliFly(self, Target.FromPos(dest.CenterPosition + offset)),
+					new Turn(self, initialFacing),
+					new HeliLand(self, false),
+					new ResupplyAircraft(self),
+					!abortOnResupply ? NextActivity : null);
+			}
+
 			return ActivityUtils.SequenceActivities(
 				new HeliFly(self, Target.FromPos(dest.CenterPosition + offset)),
-				new Turn(self, initialFacing),
-				new HeliLand(self, false),
-				new ResupplyAircraft(self));
+				NextActivity);
+		}
+
+		bool ShouldLandAtBuilding(Actor self, Actor dest)
+		{
+			if (alwaysLand)
+				return true;
+
+			if (heli.Info.RepairBuildings.Contains(dest.Info.Name) && self.GetDamageState() != DamageState.Undamaged)
+				return true;
+
+			return heli.Info.RearmBuildings.Contains(dest.Info.Name) && self.TraitsImplementing<AmmoPool>()
+					.Any(p => !p.Info.SelfReloads && !p.FullAmmo());
 		}
 	}
 }

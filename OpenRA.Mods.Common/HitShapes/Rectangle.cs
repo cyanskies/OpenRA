@@ -13,6 +13,7 @@ using System;
 using System.Drawing;
 using System.Linq;
 using OpenRA.Graphics;
+using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.HitShapes
 {
@@ -26,10 +27,26 @@ namespace OpenRA.Mods.Common.HitShapes
 		[FieldLoader.Require]
 		public readonly int2 BottomRight;
 
+		[Desc("Defines the top offset relative to the actor's target point.")]
+		public readonly int VerticalTopOffset = 0;
+
+		[Desc("Defines the bottom offset relative to the actor's target point.")]
+		public readonly int VerticalBottomOffset = 0;
+
+		// This is just a temporary work-around until we have a customizable PolygonShape
+		[Desc("Rotates shape by 90 degree relative to actor facing. Mostly required for buildings on isometric terrain.",
+			"Mobile actors do NOT need this!")]
+		public readonly bool RotateToIsometry = false;
+
+		// This is just a temporary work-around until we have a customizable PolygonShape
+		[Desc("Applies shape to every TargetablePosition instead of just CenterPosition.")]
+		public readonly bool ApplyToAllTargetablePositions = false;
+
 		int2 quadrantSize;
 		int2 center;
 
-		WVec[] combatOverlayVerts;
+		WVec[] combatOverlayVertsTop;
+		WVec[] combatOverlayVertsBottom;
 
 		public RectangleShape() { }
 
@@ -44,17 +61,28 @@ namespace OpenRA.Mods.Common.HitShapes
 			if (TopLeft.X >= BottomRight.X || TopLeft.Y >= BottomRight.Y)
 				throw new YamlException("TopLeft and BottomRight points are invalid.");
 
+			if (VerticalTopOffset < VerticalBottomOffset)
+				throw new YamlException("VerticalTopOffset must be equal to or higher than VerticalBottomOffset.");
+
 			quadrantSize = (BottomRight - TopLeft) / 2;
 			center = TopLeft + quadrantSize;
 
 			OuterRadius = new WDist(Math.Max(TopLeft.Length, BottomRight.Length));
 
-			combatOverlayVerts = new WVec[]
+			combatOverlayVertsTop = new WVec[]
 			{
-				new WVec(TopLeft.X, TopLeft.Y, 0),
-				new WVec(BottomRight.X, TopLeft.Y, 0),
-				new WVec(BottomRight.X, BottomRight.Y, 0),
-				new WVec(TopLeft.X, BottomRight.Y, 0)
+				new WVec(TopLeft.X, TopLeft.Y, VerticalTopOffset),
+				new WVec(BottomRight.X, TopLeft.Y, VerticalTopOffset),
+				new WVec(BottomRight.X, BottomRight.Y, VerticalTopOffset),
+				new WVec(TopLeft.X, BottomRight.Y, VerticalTopOffset)
+			};
+
+			combatOverlayVertsBottom = new WVec[]
+			{
+				new WVec(TopLeft.X, TopLeft.Y, VerticalBottomOffset),
+				new WVec(BottomRight.X, TopLeft.Y, VerticalBottomOffset),
+				new WVec(BottomRight.X, BottomRight.Y, VerticalBottomOffset),
+				new WVec(TopLeft.X, BottomRight.Y, VerticalBottomOffset)
 			};
 		}
 
@@ -69,13 +97,51 @@ namespace OpenRA.Mods.Common.HitShapes
 
 		public WDist DistanceFromEdge(WPos pos, Actor actor)
 		{
-			return DistanceFromEdge((pos - actor.CenterPosition).Rotate(-actor.Orientation));
+			var actorPos = actor.CenterPosition;
+			var orientation = new WRot(actor.Orientation.Roll, actor.Orientation.Pitch,
+				new WAngle(actor.Orientation.Yaw.Angle + (RotateToIsometry ? 128 : 0)));
+
+			var targetablePositions = actor.TraitsImplementing<ITargetablePositions>();
+			if (ApplyToAllTargetablePositions && targetablePositions.Any())
+			{
+				var positions = targetablePositions.SelectMany(tp => tp.TargetablePositions(actor));
+				actorPos = positions.PositionClosestTo(pos);
+			}
+
+			if (pos.Z > actorPos.Z + VerticalTopOffset)
+				return DistanceFromEdge((pos - (actorPos + new WVec(0, 0, VerticalTopOffset))).Rotate(-orientation));
+
+			if (pos.Z < actorPos.Z + VerticalBottomOffset)
+				return DistanceFromEdge((pos - (actorPos + new WVec(0, 0, VerticalBottomOffset))).Rotate(-orientation));
+
+			return DistanceFromEdge((pos - new WPos(actorPos.X, actorPos.Y, pos.Z)).Rotate(-orientation));
 		}
 
 		public void DrawCombatOverlay(WorldRenderer wr, RgbaColorRenderer wcr, Actor actor)
 		{
-			var verts = combatOverlayVerts.Select(v => wr.ScreenPosition(actor.CenterPosition + v.Rotate(actor.Orientation)));
-			wcr.DrawPolygon(verts.ToArray(), 1, Color.Yellow);
+			var actorPos = actor.CenterPosition;
+			var orientation = new WRot(actor.Orientation.Roll, actor.Orientation.Pitch,
+				new WAngle(actor.Orientation.Yaw.Angle + (RotateToIsometry ? 128 : 0)));
+
+			var targetablePositions = actor.TraitsImplementing<ITargetablePositions>();
+			if (ApplyToAllTargetablePositions && targetablePositions.Any())
+			{
+				var positions = targetablePositions.SelectMany(tp => tp.TargetablePositions(actor));
+				foreach (var pos in positions)
+				{
+					var vertsTop = combatOverlayVertsTop.Select(v => wr.Screen3DPosition(pos + v.Rotate(orientation)));
+					var vertsBottom = combatOverlayVertsBottom.Select(v => wr.Screen3DPosition(pos + v.Rotate(orientation)));
+					wcr.DrawPolygon(vertsTop.ToArray(), 1, Color.Yellow);
+					wcr.DrawPolygon(vertsBottom.ToArray(), 1, Color.Yellow);
+				}
+			}
+			else
+			{
+				var vertsTop = combatOverlayVertsTop.Select(v => wr.Screen3DPosition(actorPos + v.Rotate(orientation)));
+				var vertsBottom = combatOverlayVertsBottom.Select(v => wr.Screen3DPosition(actorPos + v.Rotate(orientation)));
+				wcr.DrawPolygon(vertsTop.ToArray(), 1, Color.Yellow);
+				wcr.DrawPolygon(vertsBottom.ToArray(), 1, Color.Yellow);
+			}
 		}
 	}
 }

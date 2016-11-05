@@ -13,10 +13,10 @@
 			Wood: 75
 			Light: 100
 			Heavy: 90
-			Concrete: 50
 		DamageTypes: Prone50Percent, TriggerProne, ExplosionDeath
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Crater
+		InvalidTargets: Vehicle, Structure, Wall, Husk, Trees, Creep
 	Warhead@3Eff: CreateEffect
 		Explosions: small_frag
 		ImpactSounds: xplos.aud
@@ -39,6 +39,7 @@
 		DamageTypes: Prone50Percent, TriggerProne, ExplosionDeath
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Crater
+		InvalidTargets: Vehicle, Structure, Wall, Husk, Trees, Creep
 	Warhead@3Eff: CreateEffect
 		Explosions: small_frag
 		ImpactSounds: xplos.aud
@@ -58,10 +59,10 @@
 			Wood: 100
 			Light: 100
 			Heavy: 100
-			Concrete: 50
 		DamageTypes: Prone50Percent, TriggerProne, ExplosionDeath
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Crater
+		InvalidTargets: Vehicle, Structure, Wall, Husk, Trees, Creep
 	Warhead@3Eff: CreateEffect
 		Explosions: small_frag
 		ImpactSounds: xplos.aud
@@ -83,10 +84,10 @@
 			Wood: 100
 			Light: 100
 			Heavy: 100
-			Concrete: 100
 		DamageTypes: Prone50Percent, TriggerProne, ExplosionDeath
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Crater
+		InvalidTargets: Vehicle, Structure, Wall, Husk, Trees, Creep
 	Warhead@3Eff: CreateEffect
 		Explosions: small_frag
 		ImpactSounds: xplos.aud
@@ -109,6 +110,7 @@ TurretGun:
 		DamageTypes: Prone50Percent, TriggerProne, ExplosionDeath
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Crater
+		InvalidTargets: Vehicle, Structure, Wall, Husk, Trees, Creep
 	Warhead@3Eff: CreateEffect
 		Explosions: small_frag
 		ImpactSounds: xplos.aud
@@ -121,7 +123,7 @@ ArtilleryShell:
 	Projectile: Bullet
 		Speed: 204
 		Blockable: false
-		Angle: 56
+		LaunchAngle: 56
 		Inaccuracy: 1c256
 		ContrailLength: 30
 		Image: 120MM
@@ -136,6 +138,7 @@ ArtilleryShell:
 		DamageTypes: Prone50Percent, TriggerProne, SmallExplosionDeath
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Crater
+		InvalidTargets: Vehicle, Structure, Wall, Husk, Trees, Creep
 	Warhead@3Eff: CreateEffect
 		Explosions: poof
-		ImpactSounds: XPLOSML2.AUD
+		ImpactSounds: xplosml2.aud

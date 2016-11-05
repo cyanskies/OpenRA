@@ -5,7 +5,7 @@ ParaBomb:
 	Projectile: GravityBomb
 		Image: PARABOMB
 		OpenSequence: open
-		Velocity: 86
+		Speed: 86
 		Acceleration: 0
 	Warhead@1Dam: SpreadDamage
 		Spread: 768
@@ -18,6 +18,7 @@ ParaBomb:
 		DamageTypes: Prone50Percent, TriggerProne, ExplosionDeath
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Crater
+		InvalidTargets: Vehicle, Tank, Structure, Wall, Husk, Trees
 	Warhead@3Eff: CreateEffect
 		Explosions: artillery_explosion
 		ImpactSounds: kaboom15.aud
@@ -28,19 +29,20 @@ ParaBomb:
 		ValidImpactTypes: Water
 
 Atomic:
-	ValidTargets: Ground, Water, Underwater, Air
+	ValidTargets: Ground, Trees, Water, Underwater, Air
 	Warhead@1Dam_impact: SpreadDamage
 		Spread: 1c0
 		Damage: 150
 		Falloff: 1000, 368, 135, 50, 18, 7, 0
-		ValidTargets: Ground, Water, Underwater, Air
+		ValidTargets: Ground, Trees, Water, Underwater, Air
 		Versus:
 			Concrete: 25
-		DamageTypes: Prone50Percent, TriggerProne, FireDeath
+		DamageTypes: Prone50Percent, TriggerProne, FireDeath, Incendiary
 	Warhead@2Res_impact: DestroyResource
 		Size: 1
 	Warhead@3Smu_impact: LeaveSmudge
 		SmudgeType: Scorch
+		InvalidTargets: Vehicle, Tank, Structure, Wall
 		Size: 1
 	Warhead@4Eff_impact: CreateEffect
 		Explosions: nuke
@@ -50,15 +52,16 @@ Atomic:
 		Damage: 60
 		Falloff: 1000, 368, 135, 50, 18, 7, 0
 		Delay: 5
-		ValidTargets: Ground, Water, Underwater, Air
+		ValidTargets: Ground, Trees, Water, Underwater, Air
 		Versus:
 			Concrete: 25
-		DamageTypes: Prone50Percent, TriggerProne, FireDeath
+		DamageTypes: Prone50Percent, TriggerProne, FireDeath, Incendiary
 	Warhead@6Res_areanuke1: DestroyResource
 		Size: 2
 		Delay: 5
 	Warhead@7Smu_areanuke1: LeaveSmudge
 		SmudgeType: Scorch
+		InvalidTargets: Vehicle, Tank, Structure, Wall, Husk, Trees
 		Size: 2
 		Delay: 5
 	Warhead@8Eff_areanuke1: CreateEffect
@@ -69,15 +72,16 @@ Atomic:
 		Damage: 60
 		Falloff: 1000, 368, 135, 50, 18, 7, 0
 		Delay: 10
-		ValidTargets: Ground, Water, Underwater, Air
+		ValidTargets: Ground, Trees, Water, Underwater, Air
 		Versus:
 			Concrete: 25
-		DamageTypes: Prone50Percent, TriggerProne, FireDeath
+		DamageTypes: Prone50Percent, TriggerProne, FireDeath, Incendiary
 	Warhead@10Res_areanuke2: DestroyResource
 		Size: 3
 		Delay: 10
 	Warhead@11Smu_areanuke2: LeaveSmudge
 		SmudgeType: Scorch
+		InvalidTargets: Vehicle, Tank, Structure, Wall, Husk, Trees
 		Size: 3
 		Delay: 10
 	Warhead@12Dam_areanuke3: SpreadDamage
@@ -85,15 +89,16 @@ Atomic:
 		Damage: 60
 		Falloff: 1000, 368, 135, 50, 18, 7, 0
 		Delay: 15
-		ValidTargets: Ground, Water, Underwater, Air
+		ValidTargets: Ground, Trees, Water, Underwater, Air
 		Versus:
 			Concrete: 25
-		DamageTypes: Prone50Percent, TriggerProne, FireDeath
+		DamageTypes: Prone50Percent, TriggerProne, FireDeath, Incendiary
 	Warhead@13Res_areanuke3: DestroyResource
 		Size: 4
 		Delay: 15
 	Warhead@14Smu_areanuke3: LeaveSmudge
 		SmudgeType: Scorch
+		InvalidTargets: Vehicle, Tank, Structure, Wall, Husk, Trees
 		Size: 4
 		Delay: 15
 	Warhead@15Dam_areanuke4: SpreadDamage
@@ -101,14 +106,15 @@ Atomic:
 		Damage: 60
 		Falloff: 1000, 368, 135, 50, 18, 7, 0
 		Delay: 20
-		ValidTargets: Ground, Water, Underwater, Air
+		ValidTargets: Ground, Trees, Water, Underwater, Air
 		Versus:
 			Concrete: 25
-		DamageTypes: Prone50Percent, TriggerProne, FireDeath
+		DamageTypes: Prone50Percent, TriggerProne, FireDeath, Incendiary
 	Warhead@16Res_areanuke4: DestroyResource
 		Size: 5
 		Delay: 20
 	Warhead@17Smu_areanuke4: LeaveSmudge
 		SmudgeType: Scorch
+		InvalidTargets: Vehicle, Tank, Structure, Wall, Husk, Trees
 		Size: 5
 		Delay: 20

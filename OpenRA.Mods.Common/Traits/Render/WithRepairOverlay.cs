@@ -13,7 +13,7 @@ using OpenRA.Effects;
 using OpenRA.Graphics;
 using OpenRA.Traits;
 
-namespace OpenRA.Mods.Common.Traits
+namespace OpenRA.Mods.Common.Traits.Render
 {
 	[Desc("Displays an overlay when the building is being repaired by the player.")]
 	public class WithRepairOverlayInfo : ITraitInfo, Requires<RenderSpritesInfo>, Requires<BodyOrientationInfo>
@@ -59,24 +59,24 @@ namespace OpenRA.Mods.Common.Traits
 			rs.Add(anim, info.Palette, info.IsPlayerPalette);
 		}
 
-		public void BuildingComplete(Actor self)
+		void INotifyBuildComplete.BuildingComplete(Actor self)
 		{
 			self.World.AddFrameEndTask(w => w.Add(new DelayedAction(120, () =>
 				buildComplete = true)));
 		}
 
-		public void Sold(Actor self) { }
-		public void Selling(Actor self)
+		void INotifySold.Sold(Actor self) { }
+		void INotifySold.Selling(Actor self)
 		{
 			buildComplete = false;
 		}
 
-		public void DamageStateChanged(Actor self, AttackInfo e)
+		void INotifyDamageStateChanged.DamageStateChanged(Actor self, AttackInfo e)
 		{
 			overlay.ReplaceAnim(RenderSprites.NormalizeSequence(overlay, e.DamageState, overlay.CurrentSequence.Name));
 		}
 
-		public void Repairing(Actor self, Actor host)
+		void INotifyRepair.Repairing(Actor self, Actor host)
 		{
 			visible = true;
 			overlay.PlayThen(overlay.CurrentSequence.Name, () => visible = false);

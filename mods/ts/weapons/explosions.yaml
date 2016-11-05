@@ -11,7 +11,11 @@ UnitExplode:
 		DamageTypes: Prone50Percent, TriggerProne, SmallExplosionDeath
 	Warhead@2Eff: CreateEffect
 		Explosions: large_twlt
+		ExplosionPalette: effectalpha75
 		ImpactSounds: expnew09.aud
+	Warhead@4Smu: LeaveSmudge
+		SmudgeType: MediumCrater
+		InvalidTargets: Building, Wall
 
 UnitExplodeSmall:
 	Warhead@1Dam: SpreadDamage
@@ -26,6 +30,14 @@ UnitExplodeSmall:
 	Warhead@2Eff: CreateEffect
 		Explosions: medium_brnl
 		ImpactSounds: expnew13.aud
+	Warhead@4Smu: LeaveSmudge
+		SmudgeType: SmallCrater
+		InvalidTargets: Building, Wall
+
+CyborgExplode:
+	Warhead@1Eff: CreateEffect
+		Explosions: medium_bang
+		ImpactSounds: expnew10.aud
 
 TiberiumExplosion:
 	Warhead@1Dam: SpreadDamage
@@ -42,6 +54,7 @@ TiberiumExplosion:
 		Size: 1,1
 	Warhead@3Eff: CreateEffect
 		Explosions: large_explosion
+		ExplosionPalette: effectalpha75
 		ImpactSounds: expnew09.aud
 
 SmallDebris:
@@ -50,7 +63,7 @@ SmallDebris:
 	Report:
 	Projectile: Bullet
 		Speed: 50, 125
-		Angle: 45, 135
+		LaunchAngle: 45, 135
 		Image: dbrissm
 		Sequences: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
 		Shadow: true
@@ -61,7 +74,7 @@ LargeDebris:
 	Report:
 	Projectile: Bullet
 		Speed: 50, 125
-		Angle: 45, 135
+		LaunchAngle: 45, 135
 		Image: dbrislg
 		Sequences: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
 		Shadow: true

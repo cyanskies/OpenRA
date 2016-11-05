@@ -17,9 +17,15 @@ WEEDGUY:
 		LocalOffset: 85,0,384
 	AttackFrontal:
 		Voice: Attack
+	-SpawnActorOnDeath@FLAMEGUY:
+	WithDeathAnimation@fire:
+		DeathSequence: die-
+		DeathTypes:
+			FireDeath: burning
 
 UMAGON:
 	Inherits: ^Soldier
+	Inherits@2: ^HealsOnTiberium
 	Valued:
 		Cost: 400
 	Tooltip:
@@ -30,8 +36,6 @@ UMAGON:
 		Speed: 71
 	Health:
 		HP: 150
-	PoisonedByTiberium:
-		Weapon: TiberiumHeal
 	Passenger:
 	RevealsShroud:
 		Range: 7c0
@@ -40,7 +44,7 @@ UMAGON:
 	AttackFrontal:
 		Voice: Attack
 	WithInfantryBody:
-		AttackSequence: shoot
+		DefaultAttackSequence: attack
 	ProducibleWithLevel:
 		Prerequisites: barracks.upgraded
 
@@ -77,6 +81,7 @@ CHAMSPY:
 
 MUTANT:
 	Inherits: ^Soldier
+	Inherits@2: ^HealsOnTiberium
 	Valued:
 		Cost: 100
 	Tooltip:
@@ -85,8 +90,6 @@ MUTANT:
 		VoiceSet: Mutant
 	Health:
 		HP: 50
-	PoisonedByTiberium:
-		Weapon: TiberiumHeal
 	Mobile:
 		Speed: 56
 	RevealsShroud:
@@ -96,12 +99,13 @@ MUTANT:
 	AttackFrontal:
 		Voice: Attack
 	WithInfantryBody:
-		AttackSequence: shoot
+		DefaultAttackSequence: attack
 	ProducibleWithLevel:
 		Prerequisites: barracks.upgraded
 
 MWMN:
 	Inherits: ^Soldier
+	Inherits@2: ^HealsOnTiberium
 	Valued:
 		Cost: 100
 	Tooltip:
@@ -110,8 +114,6 @@ MWMN:
 		VoiceSet: CivilianFemale
 	Health:
 		HP: 50
-	PoisonedByTiberium:
-		Weapon: TiberiumHeal
 	Mobile:
 		Speed: 56
 	RevealsShroud:
@@ -121,12 +123,13 @@ MWMN:
 	AttackFrontal:
 		Voice: Attack
 	WithInfantryBody:
-		AttackSequence: shoot
+		DefaultAttackSequence: attack
 	ProducibleWithLevel:
 		Prerequisites: barracks.upgraded
 
 MUTANT3:
 	Inherits: ^Soldier
+	Inherits@2: ^HealsOnTiberium
 	Valued:
 		Cost: 100
 	Tooltip:
@@ -135,8 +138,6 @@ MUTANT3:
 		VoiceSet: Mutant
 	Health:
 		HP: 50
-	PoisonedByTiberium:
-		Weapon: TiberiumHeal
 	Mobile:
 		Speed: 56
 	RevealsShroud:
@@ -146,12 +147,13 @@ MUTANT3:
 	AttackFrontal:
 		Voice: Attack
 	WithInfantryBody:
-		AttackSequence: shoot
+		DefaultAttackSequence: attack
 	ProducibleWithLevel:
 		Prerequisites: barracks.upgraded
 
 TRATOS:
 	Inherits: ^Soldier
+	Inherits@2: ^HealsOnTiberium
 	Valued:
 		Cost: 100
 	Tooltip:
@@ -160,15 +162,13 @@ TRATOS:
 		VoiceSet: Tratos
 	Health:
 		HP: 200
-	PoisonedByTiberium:
-		Weapon: TiberiumHeal
 	Mobile:
 		Speed: 71
 	RevealsShroud:
 		Range: 4c0
 	-AutoTarget:
 	WithInfantryBody:
-		AttackSequence: shoot
+		DefaultAttackSequence: attack
 
 OXANNA:
 	Inherits: ^Soldier
@@ -186,7 +186,7 @@ OXANNA:
 		Range: 4c0
 	-AutoTarget:
 	WithInfantryBody:
-		AttackSequence: shoot
+		DefaultAttackSequence: attack
 
 SLAV:
 	Inherits: ^Soldier
@@ -204,18 +204,18 @@ SLAV:
 		Range: 4c0
 	-AutoTarget:
 	WithInfantryBody:
-		AttackSequence: shoot
+		DefaultAttackSequence: attack
 
 DOGGIE:
-	Inherits: ^Infantry
+	Inherits@1: ^Infantry
+	Inherits@2: ^RegularInfantryDeath
+	Inherits@3: ^HealsOnTiberium
 	Tooltip:
 		Name: Tiberian Fiend
 	Health:
 		HP: 250
 		Shape: Circle
 			Radius: 213
-	PoisonedByTiberium:
-		Weapon: TiberiumHeal
 	Valued:
 		Cost: 100
 	Armor:
@@ -235,12 +235,16 @@ DOGGIE:
 		WanderMoveRadius: 2
 		MinMoveDelayInTicks: 25
 		MaxMoveDelayInTicks: 45
+	-SpawnActorOnDeath@FLAMEGUY:
+	WithDeathAnimation@fire:
+		DeathSequence: die-
+		DeathTypes:
+			FireDeath: burning
 
 VISC_SML:
 	Inherits: ^Visceroid
 	Tooltip:
 		Name: Baby Visceroid
-		Description: infantry transmorgifies into this
 	Health:
 		HP: 200
 	AttackWander:
@@ -249,12 +253,13 @@ VISC_SML:
 		MaxMoveDelayInTicks: 60
 	RenderSprites:
 		Image: vissml
+	Buildable:
+		Description: infantry transmorgifies into this
 
 VISC_LRG:
 	Inherits: ^Visceroid
 	Tooltip:
 		Name: Adult Visceroid
-		Description: 2 small visceroids combine into this
 	Health:
 		HP: 500
 	Armament:
@@ -270,11 +275,13 @@ VISC_LRG:
 		Crushes: crate, infantry
 	RenderSprites:
 		Image: vislrg
+	Buildable:
+		Description: 2 small visceroids combine into this
 
 CIV1:
 	Inherits: ^CivilianInfantry
 	WithInfantryBody:
-		AttackSequence: shoot
+		DefaultAttackSequence: attack
 	Armament:
 		Weapon: Pistola
 	AttackFrontal:
@@ -287,7 +294,7 @@ CIV2:
 CIV3:
 	Inherits: ^CivilianInfantry
 	WithInfantryBody:
-		AttackSequence: shoot
+		DefaultAttackSequence: attack
 	Armament:
 		Weapon: Pistola
 	AttackFrontal:

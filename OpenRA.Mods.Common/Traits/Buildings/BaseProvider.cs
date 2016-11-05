@@ -27,13 +27,17 @@ namespace OpenRA.Mods.Common.Traits
 		public object Create(ActorInitializer init) { return new BaseProvider(init.Self, this); }
 	}
 
-	public class BaseProvider : ITick, IPostRenderSelection, ISelectionBar
+	public class BaseProvider : ITick, INotifyCreated, IRenderAboveShroudWhenSelected, ISelectionBar
 	{
 		public readonly BaseProviderInfo Info;
-		DeveloperMode devMode;
-		Actor self;
+		readonly DeveloperMode devMode;
+		readonly Actor self;
+
+		Building building;
+
 		int total;
 		int progress;
+		bool allyBuildEnabled;
 
 		public BaseProvider(Actor self, BaseProviderInfo info)
 		{
@@ -41,9 +45,15 @@ namespace OpenRA.Mods.Common.Traits
 			this.self = self;
 			devMode = self.Owner.PlayerActor.Trait<DeveloperMode>();
 			progress = total = info.InitialDelay;
+			allyBuildEnabled = self.World.WorldActor.Trait<MapBuildRadius>().AllyBuildRadiusEnabled;
 		}
 
-		public void Tick(Actor self)
+		void INotifyCreated.Created(Actor self)
+		{
+			building = self.TraitOrDefault<Building>();
+		}
+
+		void ITick.Tick(Actor self)
 		{
 			if (progress > 0)
 				progress--;
@@ -56,16 +66,18 @@ namespace OpenRA.Mods.Common.Traits
 
 		public bool Ready()
 		{
+			if (building != null && building.Locked)
+				return false;
+
 			return devMode.FastBuild || progress == 0;
 		}
 
 		bool ValidRenderPlayer()
 		{
-			var allyBuildRadius = self.World.LobbyInfo.GlobalSettings.AllyBuildRadius;
-			return self.Owner == self.World.RenderPlayer || (allyBuildRadius && self.Owner.IsAlliedWith(self.World.RenderPlayer));
+			return self.Owner == self.World.RenderPlayer || (allyBuildEnabled && self.Owner.IsAlliedWith(self.World.RenderPlayer));
 		}
 
-		public IEnumerable<IRenderable> RenderAfterWorld(WorldRenderer wr)
+		public IEnumerable<IRenderable> RangeCircleRenderables(WorldRenderer wr)
 		{
 			// Visible to player and allies
 			if (!ValidRenderPlayer())
@@ -77,6 +89,11 @@ namespace OpenRA.Mods.Common.Traits
 				0,
 				Color.FromArgb(128, Ready() ? Color.White : Color.Red),
 				Color.FromArgb(96, Color.Black));
+		}
+
+		IEnumerable<IRenderable> IRenderAboveShroudWhenSelected.RenderAboveShroud(Actor self, WorldRenderer wr)
+		{
+			return RangeCircleRenderables(wr);
 		}
 
 		float ISelectionBar.GetValue()
@@ -93,5 +110,6 @@ namespace OpenRA.Mods.Common.Traits
 		}
 
 		Color ISelectionBar.GetColor() { return Color.Purple; }
+		bool ISelectionBar.DisplayWhenEmpty { get { return false; } }
 	}
 }

@@ -18,6 +18,7 @@ using OpenRA.Primitives;
 
 namespace OpenRA.Network
 {
+	using System.Globalization;
 	using NamesValuesPair = Pair<string[], object[]>;
 
 	class SyncReport
@@ -77,30 +78,29 @@ namespace OpenRA.Network
 							NamesValues = DumpSyncTrait(syncHash.Trait)
 						});
 
-			foreach (var e in orderManager.World.Effects)
+			foreach (var sync in orderManager.World.SyncedEffects)
 			{
-				var sync = e as ISync;
-				if (sync != null)
-				{
-					var hash = Sync.Hash(sync);
-					if (hash != 0)
-						report.Effects.Add(new EffectReport()
-						{
-							Name = sync.GetType().Name,
-							Hash = hash,
-							NamesValues = DumpSyncTrait(sync)
-						});
-				}
+				var hash = Sync.Hash(sync);
+				if (hash != 0)
+					report.Effects.Add(new EffectReport()
+					{
+						Name = sync.GetType().Name,
+						Hash = hash,
+						NamesValues = DumpSyncTrait(sync)
+					});
 			}
 		}
 
 		internal void DumpSyncReport(int frame, IEnumerable<FrameData.ClientOrder> orders)
 		{
+			var reportName = "syncreport-" + DateTime.UtcNow.ToString("yyyy-MM-ddTHHmmssZ", CultureInfo.InvariantCulture) + ".log";
+			Log.AddChannel("sync", reportName);
+
 			foreach (var r in syncReports)
 			{
 				if (r.Frame == frame)
 				{
-					var mod = Game.ModData.Manifest.Mod;
+					var mod = Game.ModData.Manifest.Metadata;
 					Log.Write("sync", "Player: {0} ({1} {2} {3})", Game.Settings.Player.Name, Platform.CurrentPlatform, Environment.OSVersion, Platform.RuntimeVersion);
 					Log.Write("sync", "Game ID: {0} (Mod: {1} at Version {2})", orderManager.LobbyInfo.GlobalSettings.GameUid, mod.Title, mod.Version);
 					Log.Write("sync", "Sync for net frame {0} -------------", r.Frame);

@@ -15,7 +15,7 @@ using OpenRA.Graphics;
 using OpenRA.Mods.Common.Graphics;
 using OpenRA.Traits;
 
-namespace OpenRA.Mods.Common.Traits
+namespace OpenRA.Mods.Common.Traits.Render
 {
 	[Desc("Default trait for rendering sprite-based actors.")]
 	public class WithSpriteBodyInfo : UpgradableTraitInfo, IRenderActorPreviewSpritesInfo, Requires<RenderSpritesInfo>
@@ -39,7 +39,7 @@ namespace OpenRA.Mods.Common.Traits
 			var anim = new Animation(init.World, image);
 			anim.PlayRepeating(RenderSprites.NormalizeSequence(anim, init.GetDamageState(), Sequence));
 
-			yield return new SpriteActorPreview(anim, WVec.Zero, 0, p, rs.Scale);
+			yield return new SpriteActorPreview(anim, () => WVec.Zero, () => 0, p, rs.Scale);
 		}
 	}
 
@@ -75,10 +75,15 @@ namespace OpenRA.Mods.Common.Traits
 			return RenderSprites.NormalizeSequence(DefaultAnimation, self.GetDamageState(), sequence);
 		}
 
-		// TODO: Get rid of INotifyBuildComplete in favor of using the upgrade system
-		public virtual void BuildingComplete(Actor self)
+		protected virtual void OnBuildComplete(Actor self)
 		{
 			DefaultAnimation.PlayRepeating(NormalizeSequence(self, Info.Sequence));
+		}
+
+		// TODO: Get rid of INotifyBuildComplete in favor of using the upgrade system
+		void INotifyBuildComplete.BuildingComplete(Actor self)
+		{
+			OnBuildComplete(self);
 		}
 
 		public void PlayCustomAnimation(Actor self, string name, Action after = null)
@@ -112,10 +117,15 @@ namespace OpenRA.Mods.Common.Traits
 			DefaultAnimation.PlayRepeating(NormalizeSequence(self, Info.Sequence));
 		}
 
-		public virtual void DamageStateChanged(Actor self, AttackInfo e)
+		protected virtual void DamageStateChanged(Actor self)
 		{
 			if (DefaultAnimation.CurrentSequence != null)
 				DefaultAnimation.ReplaceAnim(NormalizeSequence(self, DefaultAnimation.CurrentSequence.Name));
+		}
+
+		void INotifyDamageStateChanged.DamageStateChanged(Actor self, AttackInfo e)
+		{
+			DamageStateChanged(self);
 		}
 	}
 }

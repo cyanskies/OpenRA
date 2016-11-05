@@ -5,18 +5,15 @@ DPOD:
 	Tooltip:
 		Name: Drop Pod
 	Aircraft:
-		LandWhenIdle: yes
+		LandWhenIdle: true
 		TurnSpeed: 5
 		Speed: 149
 		InitialFacing: 0
-		LandableTerrainTypes: Clear
+		LandableTerrainTypes: Clear,Road,Rail,DirtRoad,Rough,Tiberium,BlueTiberium,Veins
 	Health:
 		HP: 60
 	Armor:
 		Type: Light
-	RevealsShroud:
-		Range: 0
-		Type: CenterPosition
 	Cargo:
 		Types: Infantry
 		MaxWeight: 1
@@ -41,11 +38,11 @@ DSHP:
 	Tooltip:
 		Name: Dropship
 	Aircraft:
-		LandWhenIdle: yes
+		LandWhenIdle: true
 		TurnSpeed: 5
 		Speed: 168
 		InitialFacing: 0
-		LandableTerrainTypes: Clear
+		LandableTerrainTypes: Clear,Road,Rail,DirtRoad,Rough,Tiberium,BlueTiberium,Veins
 		TakeoffSound: dropup1.aud
 		LandingSound: dropdwn1.aud
 		IdealSeparation: 1275
@@ -71,11 +68,11 @@ ORCA:
 		Cost: 1000
 	Tooltip:
 		Name: Orca Fighter
-		Description: Fast assault gunship with\ndual missile launchers.\n  Strong vs Buildings, Vehicles\n  Weak vs Infantry, Aircraft
 	Buildable:
 		Queue: Air
 		BuildPaletteOrder: 20
 		Prerequisites: ~gahpad
+		Description: Fast assault gunship with\ndual missile launchers.\n  Strong vs Buildings, Vehicles\n  Weak vs Infantry, Aircraft
 	Selectable:
 		Bounds: 30,24
 	Aircraft:
@@ -112,11 +109,11 @@ ORCAB:
 		Cost: 1600
 	Tooltip:
 		Name: Orca Bomber
-		Description: Heavy bomber.\n  Strong vs Buildings, Vehicles\n  Weak vs Infantry, Aircraft
 	Buildable:
 		Queue: Air
 		BuildPaletteOrder: 20
 		Prerequisites: ~gahpad, gatech
+		Description: Heavy bomber.\n  Strong vs Buildings, Vehicles\n  Weak vs Infantry, Aircraft
 	Selectable:
 		Bounds: 30,24
 	Aircraft:
@@ -167,11 +164,11 @@ ORCATRAN:
 		Prerequisites: ~disabled
 	RenderSprites:
 	Aircraft:
-		LandWhenIdle: yes
+		LandWhenIdle: true
 		TurnSpeed: 5
 		Speed: 84
 		InitialFacing: 0
-		LandableTerrainTypes: Clear
+		LandableTerrainTypes: Clear,Road,Rail,DirtRoad,Rough,Tiberium,BlueTiberium,Veins
 		TakeoffSound: orcaup1.aud
 		LandingSound: orcadwn1.aud
 		IdealSeparation: 1275
@@ -197,21 +194,24 @@ TRNSPORT:
 		Cost: 750
 	Tooltip:
 		Name: Carryall
-		Description: VTOL aircraft capable of lifting\nand transporting vehicles.\n  Unarmed
 	Buildable:
 		Queue: Air
 		BuildPaletteOrder: 10
 		Prerequisites: ~gahpad, gadept
+		Description: VTOL aircraft capable of lifting\nand transporting vehicles.\n  Unarmed
 	Aircraft:
-		LandWhenIdle: yes
+		LandWhenIdle: true
 		TurnSpeed: 5
 		Speed: 149
 		InitialFacing: 0
-		LandableTerrainTypes: Clear
+		LandableTerrainTypes: Clear,Road,Rail,DirtRoad,Rough,Tiberium,BlueTiberium,Veins
 		TakeoffSound: dropup1.aud
 		LandingSound: dropdwn1.aud
 		AltitudeVelocity: 64
 		MoveIntoShroud: false
+	Carryall:
+		Voice: Move
+		LocalOffset: 0, 0, -224
 	Health:
 		HP: 175
 	Armor:
@@ -231,11 +231,11 @@ SCRIN:
 		Cost: 1500
 	Tooltip:
 		Name: Banshee Fighter
-		Description: Advanced fighter-bomber craft\nwith twin plasma cannons.\n  Strong vs Buildings, Vehicles\n  Weak vs Infantry, Aircraft
 	Buildable:
 		Queue: Air
 		BuildPaletteOrder: 20
 		Prerequisites: ~nahpad, natech
+		Description: Advanced fighter-bomber craft\nwith twin plasma cannons.\n  Strong vs Buildings, Vehicles\n  Weak vs Infantry, Aircraft
 	Selectable:
 		Bounds: 30,24
 	Voiced:
@@ -278,11 +278,11 @@ APACHE:
 		Cost: 1000
 	Tooltip:
 		Name: Harpy
-		Description: Anti-personnel support gunship\narmed with dual chain guns.\n  Strong vs Infantry, Light armor, Aircraft\n  Weak vs Vehicles
 	Buildable:
 		Queue: Air
 		BuildPaletteOrder: 20
 		Prerequisites: ~nahpad
+		Description: Anti-personnel support gunship\narmed with dual chain guns.\n  Strong vs Infantry, Light armor, Aircraft\n  Weak vs Vehicles
 	Selectable:
 		Bounds: 30,24
 	Aircraft:
@@ -307,8 +307,16 @@ APACHE:
 		PipType: Ammo
 		PipTypeEmpty: AmmoEmpty
 	AutoTarget:
-	WithSpriteRotorOverlay:
+	WithIdleOverlay@ROTORAIR:
 		Offset: 85,0,384
+		Sequence: rotor
+		UpgradeTypes: airborne
+		UpgradeMinEnabledLevel: 1
+	WithIdleOverlay@ROTORGROUND:
+		Offset: 85,0,384
+		Sequence: slow-rotor
+		UpgradeTypes: airborne
+		UpgradeMaxEnabledLevel: 0
 	RenderSprites:
 	SpawnActorOnDeath:
 		Actor: APACHE.Husk
@@ -349,7 +357,7 @@ HUNTER:
 	AutoSelectionSize:
 	DrawLineToTarget:
 	AppearsOnRadar:
-		UseLocation: yes
+		UseLocation: true
 	Selectable:
 	SelectionDecorations:
 		Palette: pips

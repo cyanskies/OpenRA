@@ -15,6 +15,7 @@ using System.Linq;
 using OpenRA.Activities;
 using OpenRA.Mods.Common.Activities;
 using OpenRA.Mods.Common.Effects;
+using OpenRA.Mods.Common.Traits.Render;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
@@ -108,7 +109,7 @@ namespace OpenRA.Mods.Common.Traits
 				dockedHarv.CancelActivity();
 		}
 
-		public void Tick(Actor self)
+		void ITick.Tick(Actor self)
 		{
 			// Harvester was killed while unloading
 			if (dockedHarv != null && dockedHarv.IsDead)
@@ -127,7 +128,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		public void Disposing(Actor self)
+		void INotifyActorDisposing.Disposing(Actor self)
 		{
 			CancelDock(self);
 			foreach (var harv in GetLinkedHarvesters())
@@ -146,7 +147,7 @@ namespace OpenRA.Mods.Common.Traits
 			harv.QueueActivity(new CallFunc(() => harv.Trait<Harvester>().ContinueHarvesting(harv)));
 		}
 
-		public void OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
+		void INotifyOwnerChanged.OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
 		{
 			// Unlink any harvesters
 			foreach (var harv in GetLinkedHarvesters())
@@ -155,7 +156,7 @@ namespace OpenRA.Mods.Common.Traits
 			playerResources = newOwner.PlayerActor.Trait<PlayerResources>();
 		}
 
-		public void OnCapture(Actor self, Actor captor, Player oldOwner, Player newOwner)
+		void INotifyCapture.OnCapture(Actor self, Actor captor, Player oldOwner, Player newOwner)
 		{
 			// Steal any docked harv too
 			if (dockedHarv != null)
@@ -167,8 +168,8 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		public void Selling(Actor self) { CancelDock(self); }
-		public void Sold(Actor self)
+		void INotifySold.Selling(Actor self) { CancelDock(self); }
+		void INotifySold.Sold(Actor self)
 		{
 			foreach (var harv in GetLinkedHarvesters())
 				harv.Trait.UnlinkProc(harv.Actor, self);

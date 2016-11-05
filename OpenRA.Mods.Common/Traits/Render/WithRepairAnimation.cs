@@ -11,7 +11,7 @@
 
 using OpenRA.Traits;
 
-namespace OpenRA.Mods.Common.Traits
+namespace OpenRA.Mods.Common.Traits.Render
 {
 	[Desc("Replaces the building animation when it repairs a unit.")]
 	public class WithRepairAnimationInfo : ITraitInfo, Requires<WithSpriteBodyInfo>
@@ -24,20 +24,34 @@ namespace OpenRA.Mods.Common.Traits
 		public object Create(ActorInitializer init) { return new WithRepairAnimation(init.Self, this); }
 	}
 
-	public class WithRepairAnimation : INotifyRepair
+	public class WithRepairAnimation : INotifyRepair, INotifyBuildComplete, INotifySold
 	{
 		readonly WithRepairAnimationInfo info;
+		readonly WithSpriteBody spriteBody;
+		bool buildComplete;
 
 		public WithRepairAnimation(Actor self, WithRepairAnimationInfo info)
 		{
 			this.info = info;
+			spriteBody = self.TraitOrDefault<WithSpriteBody>();
 		}
 
-		public void Repairing(Actor self, Actor host)
+		void INotifyRepair.Repairing(Actor self, Actor target)
 		{
-			var spriteBody = host.TraitOrDefault<WithSpriteBody>();
-			if (spriteBody != null && !(info.PauseOnLowPower && self.IsDisabled()))
-				spriteBody.PlayCustomAnimation(host, info.Sequence, () => spriteBody.CancelCustomAnimation(host));
+			if (buildComplete && spriteBody != null && !(info.PauseOnLowPower && self.IsDisabled()))
+				spriteBody.PlayCustomAnimation(self, info.Sequence, () => spriteBody.CancelCustomAnimation(self));
 		}
+
+		void INotifyBuildComplete.BuildingComplete(Actor self)
+		{
+			buildComplete = true;
+		}
+
+		void INotifySold.Selling(Actor self)
+		{
+			buildComplete = false;
+		}
+
+		void INotifySold.Sold(Actor self) { }
 	}
 }

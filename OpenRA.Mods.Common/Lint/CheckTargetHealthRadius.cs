@@ -11,7 +11,7 @@
 
 using System;
 using System.Linq;
-using OpenRA.Mods.Common.Effects;
+using OpenRA.Mods.Common.Projectiles;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Mods.Common.Warheads;
 using OpenRA.Traits;
@@ -47,7 +47,20 @@ namespace OpenRA.Mods.Common.Lint
 							continue;
 
 						if (healthTraits.Where(x => x.Shape.OuterRadius.Length > warhead.TargetExtraSearchRadius.Length).Any())
-							emitError("Actor type `{0}` has a health radius exceeding the victim scan radius of a warhead on `{1}`!"
+							emitError("Actor type `{0}` has a health radius exceeding the victim scan radius of a SpreadDamageWarhead on `{1}`!"
+								.F(actorInfo.Key, weaponInfo.Key));
+					}
+
+					var effectWarheads = weaponInfo.Value.Warheads.OfType<CreateEffectWarhead>();
+
+					foreach (var warhead in effectWarheads)
+					{
+						// This warhead cannot affect this actor.
+						if (!warhead.ValidTargets.Overlaps(targetable))
+							continue;
+
+						if (healthTraits.Where(x => x.Shape.OuterRadius.Length > warhead.TargetSearchRadius.Length).Any())
+							emitError("Actor type `{0}` has a health radius exceeding the victim scan radius of a CreateEffectWarhead on `{1}`!"
 								.F(actorInfo.Key, weaponInfo.Key));
 					}
 
@@ -58,9 +71,16 @@ namespace OpenRA.Mods.Common.Lint
 					if (bullet == null && missile == null && areabeam == null)
 						continue;
 
-					var targetExtraSearchRadius = bullet != null ? bullet.TargetExtraSearchRadius :
-						missile != null ? missile.TargetExtraSearchRadius :
-						areabeam != null ? areabeam.TargetExtraSearchRadius : WDist.Zero;
+					var targetExtraSearchRadius = WDist.Zero;
+
+					if (bullet != null)
+						targetExtraSearchRadius = bullet.TargetExtraSearchRadius;
+
+					if (missile != null)
+						targetExtraSearchRadius = missile.TargetExtraSearchRadius;
+
+					if (areabeam != null)
+						targetExtraSearchRadius = areabeam.TargetExtraSearchRadius;
 
 					if (healthTraits.Where(x => x.Shape.OuterRadius.Length > targetExtraSearchRadius.Length).Any())
 						emitError("Actor type `{0}` has a health radius exceeding the victim scan radius of the projectile on `{1}`!"

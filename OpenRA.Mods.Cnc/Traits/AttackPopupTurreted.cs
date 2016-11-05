@@ -11,6 +11,7 @@
 
 using System.Linq;
 using OpenRA.Mods.Common.Traits;
+using OpenRA.Mods.Common.Traits.Render;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Cnc.Traits
@@ -82,7 +83,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			return true;
 		}
 
-		public void TickIdle(Actor self)
+		void INotifyIdle.TickIdle(Actor self)
 		{
 			if (state == PopupState.Open && idleTicks++ > info.CloseDelay)
 			{
@@ -101,7 +102,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			}
 		}
 
-		public void BuildingComplete(Actor self)
+		void INotifyBuildComplete.BuildingComplete(Actor self)
 		{
 			if (skippedMakeAnimation)
 			{
@@ -111,7 +112,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			}
 		}
 
-		public int GetDamageModifier(Actor attacker, IWarhead warhead)
+		public int GetDamageModifier(Actor attacker, Damage damage)
 		{
 			return state == PopupState.Closed ? info.ClosedDamageMultiplier : 100;
 		}

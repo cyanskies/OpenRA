@@ -13,7 +13,7 @@ Rockets:
 		TrailImage: smokey
 		ContrailLength: 8
 		Speed: 298
-		RangeLimit: 20
+		RangeLimit: 7c204
 	Warhead@1Dam: SpreadDamage
 		Spread: 128
 		Damage: 35
@@ -23,10 +23,10 @@ Rockets:
 			Wood: 85
 			Light: 100
 			Heavy: 100
-			Concrete: 25
 		DamageTypes: Prone50Percent, TriggerProne, ExplosionDeath
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Crater
+		InvalidTargets: Vehicle, Structure, Wall, Husk, Trees, Creep
 	Warhead@3Eff: CreateEffect
 		Explosions: small_frag
 		ImpactSounds: xplos.aud
@@ -47,7 +47,7 @@ BikeRockets:
 		TrailImage: smokey
 		ContrailLength: 8
 		Speed: 213
-		RangeLimit: 30
+		RangeLimit: 7c204
 	Warhead@1Dam: SpreadDamage
 		Spread: 128
 		Damage: 30
@@ -57,10 +57,10 @@ BikeRockets:
 			Wood: 75
 			Light: 100
 			Heavy: 100
-			Concrete: 50
 		DamageTypes: Prone50Percent, TriggerProne, ExplosionDeath
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Crater
+		InvalidTargets: Vehicle, Structure, Wall, Husk, Trees, Creep
 	Warhead@3Eff: CreateEffect
 		Explosions: small_frag
 		ImpactSounds: xplos.aud
@@ -82,7 +82,7 @@ OrcaAGMissiles:
 		TrailImage: smokey
 		ContrailLength: 8
 		Speed: 256
-		RangeLimit: 30
+		RangeLimit: 6c0
 	Warhead@1Dam: SpreadDamage
 		Spread: 128
 		Damage: 25
@@ -95,6 +95,7 @@ OrcaAGMissiles:
 		DamageTypes: Prone50Percent, TriggerProne, ExplosionDeath
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Crater
+		InvalidTargets: Vehicle, Structure, Wall, Husk, Trees, Creep
 	Warhead@3Eff: CreateEffect
 		Explosions: small_frag
 		ImpactSounds: xplos.aud
@@ -116,7 +117,7 @@ OrcaAAMissiles:
 		TrailImage: smokey
 		ContrailLength: 8
 		Speed: 298
-		RangeLimit: 30
+		RangeLimit: 6c0
 	Warhead@1Dam: SpreadDamage
 		Spread: 128
 		Damage: 25
@@ -125,8 +126,6 @@ OrcaAAMissiles:
 			Light: 75
 			Heavy: 50
 		DamageTypes: Prone50Percent, TriggerProne, ExplosionDeath
-	Warhead@2Smu: LeaveSmudge
-		SmudgeType: Crater
 	Warhead@3Eff: CreateEffect
 		Explosions: small_frag
 		ImpactSounds: xplos.aud
@@ -147,7 +146,7 @@ MammothMissiles:
 		TrailImage: smokey
 		ContrailLength: 8
 		Speed: 341
-		RangeLimit: 35
+		RangeLimit: 6c0
 	Warhead@1Dam: SpreadDamage
 		Spread: 298
 		Damage: 45
@@ -160,6 +159,7 @@ MammothMissiles:
 		DamageTypes: Prone50Percent, TriggerProne, ExplosionDeath
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Crater
+		InvalidTargets: Vehicle, Structure, Wall, Husk, Trees, Creep
 	Warhead@3Eff: CreateEffect
 		Explosions: small_poof
 		ImpactSounds: xplos.aud
@@ -182,11 +182,11 @@ MammothMissiles:
 		Blockable: false
 		Shadow: true
 		Inaccuracy: 853
-		Angle: 62
+		LaunchAngle: 62
 		Image: DRAGON
 		RateOfTurn: 2
 		ContrailLength: 10
-		Trail: smokey
+		TrailImage: smokey
 		Speed: 341
 	Warhead@1Dam: SpreadDamage
 		Spread: 683
@@ -200,6 +200,7 @@ MammothMissiles:
 		DamageTypes: Prone50Percent, TriggerProne, ExplosionDeath
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Crater
+		InvalidTargets: Vehicle, Structure, Wall, Husk, Trees, Creep
 	Warhead@3Eff: CreateEffect
 		Explosions: med_frag
 		ImpactSounds: xplos.aud
@@ -220,7 +221,7 @@ MammothMissiles:
 		TrailImage: smokey
 		ContrailLength: 8
 		Speed: 213
-		RangeLimit: 40
+		RangeLimit: 8c409
 	Warhead@1Dam: SpreadDamage
 		Spread: 128
 		Damage: 60
@@ -233,6 +234,7 @@ MammothMissiles:
 		DamageTypes: Prone50Percent, TriggerProne, ExplosionDeath
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Crater
+		InvalidTargets: Vehicle, Structure, Wall, Husk, Trees, Creep
 	Warhead@3Eff: CreateEffect
 		Explosions: small_frag
 		ImpactSounds: xplos.aud
@@ -241,18 +243,18 @@ BoatMissile:
 	ReloadDelay: 35
 	Range: 8c0
 	Burst: 2
-	BurstDelay: 7
+	BurstDelay: 10
 	Report: rocket2.aud
 	Projectile: Missile
 		Arm: 0
 		Blockable: false
-		Inaccuracy: 213
+		Inaccuracy: 426
 		Image: DRAGON
-		HorizontalRateOfTurn: 10
+		HorizontalRateOfTurn: 5
 		TrailImage: smokey
 		ContrailLength: 8
 		Speed: 170
-		RangeLimit: 60
+		RangeLimit: 9c614
 	Warhead@1Dam: SpreadDamage
 		Spread: 256
 		Damage: 60
@@ -264,6 +266,7 @@ BoatMissile:
 		DamageTypes: Prone50Percent, TriggerProne, SmallExplosionDeath
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Crater
+		InvalidTargets: Vehicle, Structure, Wall, Husk, Trees, Creep
 	Warhead@3Eff: CreateEffect
 		Explosions: small_poof
 		ImpactSounds: xplos.aud
@@ -287,7 +290,7 @@ TowerMissle:
 		TrailImage: smokey
 		ContrailLength: 8
 		Speed: 298
-		RangeLimit: 40
+		RangeLimit: 8c409
 	Warhead@1Dam: SpreadDamage
 		Spread: 683
 		Damage: 25
@@ -300,6 +303,7 @@ TowerMissle:
 		DamageTypes: Prone50Percent, TriggerProne, SmallExplosionDeath
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Crater
+		InvalidTargets: Vehicle, Structure, Wall, Husk, Trees, Creep
 	Warhead@3Eff: CreateEffect
 		Explosions: med_frag
 		ImpactSounds: xplos.aud
@@ -315,7 +319,7 @@ SAMMissile:
 		Image: MISSILE
 		HorizontalRateOfTurn: 20
 		Speed: 426
-		RangeLimit: 35
+		RangeLimit: 9c614
 		TrailImage: smokey
 		ContrailLength: 8
 	Warhead@1Dam: SpreadDamage
@@ -328,8 +332,6 @@ SAMMissile:
 			Heavy: 75
 		Damage: 35
 		DamageTypes: Prone50Percent, TriggerProne, ExplosionDeath
-	Warhead@2Smu: LeaveSmudge
-		SmudgeType: Crater
 	Warhead@3Eff: CreateEffect
 		Explosions: small_building
 		ImpactSounds: xplos.aud
@@ -344,10 +346,10 @@ HonestJohn:
 		Shadow: true
 		Inaccuracy: 213
 		Image: patriot
-		Trail: smokey
+		TrailImage: smokey
 		Speed: 187
 		RangeLimit: 35
-		Angle: 88
+		LaunchAngle: 88
 	Warhead@1Dam: SpreadDamage
 		Spread: 256
 		Damage: 100
@@ -376,7 +378,7 @@ Patriot:
 		ContrailLength: 8
 		HorizontalRateOfTurn: 20
 		Speed: 300
-		RangeLimit: 30
+		RangeLimit: 10c819
 	Warhead@1Dam: SpreadDamage
 		Spread: 682
 		ValidTargets: Air
@@ -384,8 +386,6 @@ Patriot:
 			Heavy: 75
 		Damage: 50
 		DamageTypes: Prone50Percent, TriggerProne, ExplosionDeath
-	Warhead@2Smu: LeaveSmudge
-		SmudgeType: Crater
 	Warhead@3Eff: CreateEffect
 		Explosions: poof
 		ImpactSounds: xplos.aud

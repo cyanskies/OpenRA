@@ -11,7 +11,7 @@
 
 using OpenRA.Traits;
 
-namespace OpenRA.Mods.Common.Traits
+namespace OpenRA.Mods.Common.Traits.Render
 {
 	[Desc("Periodically plays an idle animation, replacing the default body animation.")]
 	public class WithIdleAnimationInfo : UpgradableTraitInfo, Requires<WithSpriteBodyInfo>
@@ -41,7 +41,7 @@ namespace OpenRA.Mods.Common.Traits
 			ticks = info.Interval;
 		}
 
-		public void Tick(Actor self)
+		void ITick.Tick(Actor self)
 		{
 			if (!buildComplete || IsTraitDisabled)
 				return;
@@ -54,16 +54,16 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		public void BuildingComplete(Actor self)
+		void INotifyBuildComplete.BuildingComplete(Actor self)
 		{
 			buildComplete = true;
 		}
 
-		public void Selling(Actor self)
+		void INotifySold.Selling(Actor self)
 		{
 			buildComplete = false;
 		}
 
-		public void Sold(Actor self) { }
+		void INotifySold.Sold(Actor self) { }
 	}
 }

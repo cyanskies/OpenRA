@@ -88,7 +88,15 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var checkboxUPnP = panel.Get<CheckboxWidget>("UPNP_CHECKBOX");
 			checkboxUPnP.IsChecked = () => allowPortForward;
 			checkboxUPnP.OnClick = () => allowPortForward ^= true;
-			checkboxUPnP.IsDisabled = () => !Game.Settings.Server.NatDeviceAvailable;
+			checkboxUPnP.IsDisabled = () => !Game.Settings.Server.AllowPortForward;
+
+			var labelUPnP = panel.GetOrNull<LabelWidget>("UPNP_NOTICE");
+			if (labelUPnP != null)
+				labelUPnP.IsVisible = () => !Game.Settings.Server.DiscoverNatDevices;
+
+			var labelUPnPUnsupported = panel.GetOrNull<LabelWidget>("UPNP_UNSUPPORTED_NOTICE");
+			if (labelUPnPUnsupported != null)
+				labelUPnPUnsupported.IsVisible = () => Game.Settings.Server.DiscoverNatDevices && !Game.Settings.Server.AllowPortForward;
 
 			var passwordField = panel.GetOrNull<PasswordFieldWidget>("PASSWORD");
 			if (passwordField != null)
@@ -128,14 +136,14 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			}
 			catch (System.Net.Sockets.SocketException e)
 			{
-				var err_msg = "Could not listen on port {0}.".F(Game.Settings.Server.ListenPort);
+				var message = "Could not listen on port {0}.".F(Game.Settings.Server.ListenPort);
 				if (e.ErrorCode == 10048) { // AddressAlreadyInUse (WSAEADDRINUSE)
-					err_msg += "\n\nCheck if the port is already being used.";
+					message += "\nCheck if the port is already being used.";
 				} else {
-					err_msg += "\n\nError is: \"{0}\" ({1})".F(e.Message, e.ErrorCode);
+					message += "\nError is: \"{0}\" ({1})".F(e.Message, e.ErrorCode);
 				}
 
-				ConfirmationDialogs.CancelPrompt("Server Creation Failed", err_msg, cancelText: "OK");
+				ConfirmationDialogs.ButtonPrompt("Server Creation Failed", message, onCancel: () => { }, cancelText: "Back");
 				return;
 			}
 

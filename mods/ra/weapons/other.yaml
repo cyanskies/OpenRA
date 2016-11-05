@@ -1,56 +1,63 @@
 FireballLauncher:
+	ValidTargets: Ground, Water, Trees
 	ReloadDelay: 65
 	Range: 5c0
 	Burst: 2
 	BurstDelay: 20
 	Projectile: Bullet
 		Speed: 204
-		Trail: fb2
+		TrailImage: fb2
 		Image: FB1
 	Warhead@1Dam: SpreadDamage
 		Spread: 213
 		Damage: 150
+		ValidTargets: Ground, Water, Trees
 		Versus:
 			None: 90
 			Wood: 50
 			Light: 60
 			Heavy: 25
-			Concrete: 50
-		DamageTypes: Prone50Percent, TriggerProne, FireDeath
+			Concrete: 20
+		DamageTypes: Prone50Percent, TriggerProne, FireDeath, Incendiary
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Scorch
+		InvalidTargets: Structure, Wall
 	Warhead@3Eff: CreateEffect
 		Explosions: napalm
 		ImpactSounds: firebl3.aud
 
 Flamer:
+	ValidTargets: Ground, Water, Trees
 	ReloadDelay: 50
 	Range: 5c0
 	Burst: 15
 	BurstDelay: 1
 	Projectile: Bullet
 		Speed: 170
-		Trail: fb4
+		TrailImage: fb4
 		Image: fb3
-		Angle: 62
+		LaunchAngle: 62
 		Inaccuracy: 853
 	Warhead@1Dam: SpreadDamage
 		Spread: 341
 		Damage: 8
+		ValidTargets: Ground, Water, Trees
 		Versus:
 			None: 90
 			Wood: 100
 			Light: 60
 			Heavy: 25
-			Concrete: 50
-		DamageTypes: Prone50Percent, TriggerProne, FireDeath
+			Concrete: 20
+		DamageTypes: Prone50Percent, TriggerProne, FireDeath, Incendiary
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Scorch
+		InvalidTargets: Structure, Wall
 	Warhead@3Eff: CreateEffect
 		Explosions: small_napalm
 		ImpactSounds: firebl3.aud
 
 Napalm:
+	ValidTargets: Ground, Water, Trees
 	ReloadDelay: 20
 	Range: 4c512
 	Projectile: Bullet
@@ -60,14 +67,16 @@ Napalm:
 	Warhead@1Dam: SpreadDamage
 		Spread: 170
 		Damage: 100
+		ValidTargets: Ground, Water, Trees
 		Versus:
 			None: 90
 			Light: 60
 			Heavy: 25
 			Concrete: 50
-		DamageTypes: Prone50Percent, TriggerProne, FireDeath
+		DamageTypes: Prone50Percent, TriggerProne, FireDeath, Incendiary
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Scorch
+		InvalidTargets: Structure, Wall
 	Warhead@3Eff: CreateEffect
 		Explosions: napalm
 		ImpactSounds: firebl3.aud
@@ -84,7 +93,7 @@ Grenade:
 	Projectile: Bullet
 		Speed: 136
 		Blockable: false
-		Angle: 62
+		LaunchAngle: 62
 		Inaccuracy: 554
 		Image: BOMB
 	Warhead@1Dam: SpreadDamage
@@ -94,10 +103,12 @@ Grenade:
 			None: 50
 			Wood: 100
 			Light: 25
-			Heavy: 5
+			Heavy: 25
+			Concrete: 100
 		DamageTypes: Prone50Percent, TriggerProne, SmallExplosionDeath
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Crater
+		InvalidTargets: Vehicle, Tank, Structure, Wall, Husk, Trees
 	Warhead@3Eff: CreateEffect
 		Explosions: med_explosion
 		ImpactSounds: kaboom25.aud
@@ -114,7 +125,7 @@ DepthCharge:
 	Projectile: Bullet
 		Speed: 85
 		Image: BOMB
-		Angle: 62
+		LaunchAngle: 62
 		Blockable: false
 		Inaccuracy: 128
 	Warhead@1Dam: SpreadDamage
@@ -127,8 +138,6 @@ DepthCharge:
 			Light: 75
 			Concrete: 50
 		DamageTypes: ExplosionDeath
-	Warhead@2Smu: LeaveSmudge
-		SmudgeType: Crater
 	Warhead@3Eff: CreateEffect
 		Explosions: large_splash
 		ImpactSounds: h2obomb2.aud
@@ -183,6 +192,7 @@ DogJaw:
 		Spread: 213
 		Damage: 100
 		ValidTargets: Infantry
+		InvalidTargets: Ant
 		DamageTypes: DefaultDeath
 
 Heal:

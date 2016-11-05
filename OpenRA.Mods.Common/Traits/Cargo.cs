@@ -124,7 +124,7 @@ namespace OpenRA.Mods.Common.Traits
 			facing = Exts.Lazy(self.TraitOrDefault<IFacing>);
 		}
 
-		public void Created(Actor self)
+		void INotifyCreated.Created(Actor self)
 		{
 			aircraft = self.TraitOrDefault<Aircraft>();
 		}
@@ -266,9 +266,8 @@ namespace OpenRA.Mods.Common.Traits
 			if (passengerFacing != null)
 				passengerFacing.Facing = facing.Value.Facing + Info.PassengerFacing;
 
-			var passengerTurreted = passenger.TraitOrDefault<Turreted>();
-			if (passengerTurreted != null)
-				passengerTurreted.TurretFacing = facing.Value.Facing + Info.PassengerFacing;
+			foreach (var t in passenger.TraitsImplementing<Turreted>())
+				t.TurretFacing = facing.Value.Facing + Info.PassengerFacing;
 		}
 
 		public IEnumerable<PipType> GetPips(Actor self)
@@ -310,8 +309,10 @@ namespace OpenRA.Mods.Common.Traits
 						upgradeManager.RevokeUpgrade(self, u, this);
 			}
 
-			foreach (var npe in self.TraitsImplementing<INotifyPassengerEntered>())
-				npe.OnPassengerEntered(self, a);
+			// If not initialized then this will be notified in the first tick
+			if (initialized)
+				foreach (var npe in self.TraitsImplementing<INotifyPassengerEntered>())
+					npe.OnPassengerEntered(self, a);
 
 			var p = a.Trait<Passenger>();
 			p.Transport = self;
@@ -319,7 +320,7 @@ namespace OpenRA.Mods.Common.Traits
 				upgradeManager.GrantUpgrade(self, u, p);
 		}
 
-		public void Killed(Actor self, AttackInfo e)
+		void INotifyKilled.Killed(Actor self, AttackInfo e)
 		{
 			if (Info.EjectOnDeath)
 				while (!IsEmpty(self) && CanUnload())
@@ -347,7 +348,7 @@ namespace OpenRA.Mods.Common.Traits
 			cargo.Clear();
 		}
 
-		public void Disposing(Actor self)
+		void INotifyActorDisposing.Disposing(Actor self)
 		{
 			foreach (var c in cargo)
 				c.Dispose();
@@ -355,8 +356,8 @@ namespace OpenRA.Mods.Common.Traits
 			cargo.Clear();
 		}
 
-		public void Selling(Actor self) { }
-		public void Sold(Actor self)
+		void INotifySold.Selling(Actor self) { }
+		void INotifySold.Sold(Actor self)
 		{
 			if (!Info.EjectOnSell || cargo == null)
 				return;
@@ -376,19 +377,16 @@ namespace OpenRA.Mods.Common.Traits
 			});
 		}
 
-		public void OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
+		void INotifyOwnerChanged.OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
 		{
 			if (cargo == null)
 				return;
 
-			self.World.AddFrameEndTask(w =>
-			{
-				foreach (var p in Passengers)
-					p.Owner = newOwner;
-			});
+			foreach (var p in Passengers)
+				p.ChangeOwner(newOwner);
 		}
 
-		public void AddedToWorld(Actor self)
+		void INotifyAddedToWorld.AddedToWorld(Actor self)
 		{
 			// Force location update to avoid issues when initial spawn is outside map
 			currentCell = self.Location;
@@ -396,7 +394,7 @@ namespace OpenRA.Mods.Common.Traits
 		}
 
 		bool initialized;
-		public void Tick(Actor self)
+		void ITick.Tick(Actor self)
 		{
 			// Notify initial cargo load
 			if (!initialized)
@@ -420,12 +418,6 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 	}
-
-	[RequireExplicitImplementation]
-	public interface INotifyPassengerEntered { void OnPassengerEntered(Actor self, Actor passenger); }
-
-	[RequireExplicitImplementation]
-	public interface INotifyPassengerExited { void OnPassengerExited(Actor self, Actor passenger); }
 
 	public class RuntimeCargoInit : IActorInit<Actor[]>, ISuppressInitExport
 	{

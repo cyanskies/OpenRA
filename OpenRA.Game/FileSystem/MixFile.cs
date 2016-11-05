@@ -90,9 +90,11 @@ namespace OpenRA.FileSystem
 			// TODO: This should be passed to the mix file ctor
 			if (context.Exists("global mix database.dat"))
 			{
-				var db = new XccGlobalDatabase(context.Open("global mix database.dat"));
-				foreach (var e in db.Entries)
-					allPossibleFilenames.Add(e);
+				using (var db = new XccGlobalDatabase(context.Open("global mix database.dat")))
+				{
+					foreach (var e in db.Entries)
+						allPossibleFilenames.Add(e);
+				}
 			}
 
 			foreach (var filename in allPossibleFilenames)
@@ -189,9 +191,22 @@ namespace OpenRA.FileSystem
 		public Stream GetContent(PackageEntry entry)
 		{
 			Stream parentStream;
-			var offset = dataStart + entry.Offset + SegmentStream.GetOverallNestedOffset(s, out parentStream);
-			var path = ((FileStream)parentStream).Name;
-			return new SegmentStream(File.OpenRead(path), offset, entry.Length);
+			var baseOffset = dataStart + entry.Offset;
+			var nestedOffset = baseOffset + SegmentStream.GetOverallNestedOffset(s, out parentStream);
+
+			// Special case FileStream - instead of creating an in-memory copy,
+			// just reference the portion of the on-disk file that we need to save memory.
+			// We use GetType instead of 'is' here since we can't handle any derived classes of FileStream.
+			if (parentStream.GetType() == typeof(FileStream))
+			{
+				var path = ((FileStream)parentStream).Name;
+				return new SegmentStream(File.OpenRead(path), nestedOffset, entry.Length);
+			}
+
+			// For all other streams, create a copy in memory.
+			// This uses more memory but is the only way in general to ensure the returned streams won't clash.
+			s.Seek(baseOffset, SeekOrigin.Begin);
+			return new MemoryStream(s.ReadBytes((int)entry.Length));
 		}
 
 		public Stream GetStream(string filename)
@@ -201,6 +216,15 @@ namespace OpenRA.FileSystem
 				return null;
 
 			return GetContent(e);
+		}
+
+		public IReadOnlyDictionary<string, PackageEntry> Index
+		{
+			get
+			{
+				var absoluteIndex = index.ToDictionary(e => e.Key, e => new PackageEntry(e.Value.Hash, (uint)(e.Value.Offset + dataStart), e.Value.Length));
+				return new ReadOnlyDictionary<string, PackageEntry>(absoluteIndex);
+			}
 		}
 
 		public bool Contains(string filename)

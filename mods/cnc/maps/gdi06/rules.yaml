@@ -5,7 +5,6 @@ World:
 		BackgroundMusic: rain-ambient
 		StartingMusic: rain
 	WeatherOverlay:
-		ParticleDensityFactor: 0.0007625
 		ChangingWindLevel: true
 		WindLevels: -5, -3, -2, 0, 2, 3, 5
 		WindTick: 150, 550
@@ -23,7 +22,7 @@ World:
 		Red: 0.75
 		Green: 0.85
 		Blue: 1.5
-		Ambient: 0.35
+		Ambient: 0.45
 	MissionData:
 		Briefing: Use a GDI Commando to infiltrate the Nod base. **** ** destroy the ******** so that the base is incapacitated. Get in, hit it, and get the **** out.
 		BriefingVideo: gdi6.vqa
@@ -31,13 +30,27 @@ World:
 		WinVideo: sabotage.vqa
 		LossVideo: gdilose.vqa
 	MapOptions:
-		Difficulties: Easy, Normal, Hard
 		ShortGameLocked: True
 		ShortGameEnabled: True
+	ScriptLobbyDropdown@difficulty:
+		ID: difficulty
+		Label: Difficulty
+		Values:
+			easy: Easy
+			normal: Normal
+			hard: Hard
+		Default: easy
 
 Player:
 	PlayerResources:
 		DefaultCash: 0
+
+^Bridge:
+	DamageMultiplier@INVULNERABLE:
+		Modifier: 0
+
+BRIDGEHUT:
+	-Targetable:
 
 FLARE:
 	RevealsShroud:
@@ -47,6 +60,8 @@ OLDLST:
 	Inherits: LST
 	-WithRoof:
 	-Selectable:
+	SelectionDecorations:
+		RenderSelectionBars: False
 	RejectsOrders:
 	Cargo:
 		Types: disabled
@@ -77,8 +92,8 @@ RMBO.easy:
 
 RMBO.hard:
 	Inherits: RMBO
-	AutoTarget:
-		TargetWhenDamaged: false
+	-AutoTarget:
+	-AttackMove:
 	RenderSprites:
 		Image: RMBO
 

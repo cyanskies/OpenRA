@@ -2,7 +2,7 @@ MapFormat: 11
 
 RequiresMod: cnc
 
-Title: Get the Rods back (b)
+Title: 04b: Get the Rods back
 
 Author: Westwood Studios
 
@@ -474,7 +474,7 @@ Actors:
 		Owner: Nod
 		Facing: 96
 	HandOfNod: hand
-		Location: 15,14
+		Location: 15,15
 		Owner: Nod
 	Hunter1: bggy
 		Location: 27,37

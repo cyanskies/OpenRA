@@ -35,7 +35,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly bool Sticky = true;
 
 		[Desc("This percentage value is multiplied with actor cost to translate into build time (lower means faster).")]
-		public readonly int BuildSpeed = 40;
+		public readonly int BuildDurationModifier = 100;
 
 		[Desc("The build time is multiplied with this value on low power.")]
 		public readonly int LowPowerSlowdown = 3;
@@ -118,7 +118,7 @@ namespace OpenRA.Mods.Common.Traits
 			queue.Clear();
 		}
 
-		public void OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
+		void INotifyOwnerChanged.OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
 		{
 			ClearQueue();
 
@@ -138,13 +138,13 @@ namespace OpenRA.Mods.Common.Traits
 			newOwner.PlayerActor.Trait<TechTree>().Update();
 		}
 
-		public void Killed(Actor killed, AttackInfo e) { if (killed == self) { ClearQueue(); Enabled = false; } }
-		public void Selling(Actor self) { ClearQueue(); Enabled = false; }
-		public void Sold(Actor self) { }
+		void INotifyKilled.Killed(Actor killed, AttackInfo e) { if (killed == self) { ClearQueue(); Enabled = false; } }
+		void INotifySold.Selling(Actor self) { ClearQueue(); Enabled = false; }
+		void INotifySold.Sold(Actor self) { }
 
-		public void BeforeTransform(Actor self) { ClearQueue(); Enabled = false; }
-		public void OnTransform(Actor self) { }
-		public void AfterTransform(Actor self) { }
+		void INotifyTransform.BeforeTransform(Actor self) { ClearQueue(); Enabled = false; }
+		void INotifyTransform.OnTransform(Actor self) { }
+		void INotifyTransform.AfterTransform(Actor self) { }
 
 		void CacheProducibles(Actor playerActor)
 		{
@@ -204,7 +204,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public virtual IEnumerable<ActorInfo> AllItems()
 		{
-			if (self.World.AllowDevCommands && developerMode.AllTech)
+			if (developerMode.AllTech)
 				return producible.Keys;
 
 			return allProducibles;
@@ -214,7 +214,7 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			if (!Enabled)
 				return Enumerable.Empty<ActorInfo>();
-			if (self.World.AllowDevCommands && developerMode.AllTech)
+			if (developerMode.AllTech)
 				return producible.Keys;
 
 			return buildableProducibles;
@@ -226,7 +226,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (!producible.TryGetValue(actor, out ps))
 				return false;
 
-			return ps.Buildable || (self.World.AllowDevCommands && developerMode.AllTech);
+			return ps.Buildable || developerMode.AllTech;
 		}
 
 		public virtual void Tick(Actor self)
@@ -309,17 +309,19 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		public virtual int GetBuildTime(string unitString)
+		public virtual int GetBuildTime(ActorInfo unit, BuildableInfo bi)
 		{
-			return GetBuildTime(self.World.Map.Rules.Actors[unitString]);
-		}
-
-		public virtual int GetBuildTime(ActorInfo unit, BuildableInfo bi = null)
-		{
-			if (self.World.AllowDevCommands && self.Owner.PlayerActor.Trait<DeveloperMode>().FastBuild)
+			if (developerMode.FastBuild)
 				return 0;
 
-			var time = unit.GetBuildTime() * Info.BuildSpeed / 100;
+			var time = bi.BuildDuration;
+			if (time == -1)
+			{
+				var valued = unit.TraitInfoOrDefault<ValuedInfo>();
+				time = valued != null ? valued.Cost : 0;
+			}
+
+			time = time * bi.BuildDurationModifier * Info.BuildDurationModifier / 10000;
 			return time;
 		}
 
@@ -415,11 +417,9 @@ namespace OpenRA.Mods.Common.Traits
 		public bool Started { get; private set; }
 		public int Slowdown { get; private set; }
 
-		readonly INotifyInsufficientFunds[] insufficientFunds;
-		readonly Player owner;
+		readonly ActorInfo ai;
+		readonly BuildableInfo bi;
 		readonly PowerManager pm;
-
-		bool insufficientFundsPlayed;
 
 		public ProductionItem(ProductionQueue queue, string item, int cost, PowerManager pm, Action onComplete)
 		{
@@ -429,24 +429,17 @@ namespace OpenRA.Mods.Common.Traits
 			OnComplete = onComplete;
 			Queue = queue;
 			this.pm = pm;
-			owner = queue.Actor.Owner;
-			insufficientFunds = owner.PlayerActor.TraitsImplementing<INotifyInsufficientFunds>().ToArray();
+			ai = Queue.Actor.World.Map.Rules.Actors[Item];
+			bi = ai.TraitInfo<BuildableInfo>();
 		}
 
 		public void Tick(PlayerResources pr)
 		{
 			if (!Started)
 			{
-				var time = Queue.GetBuildTime(Item);
+				var time = Queue.GetBuildTime(ai, bi);
 				if (time > 0)
 					RemainingTime = TotalTime = time;
-
-				// Don't play a QueuedAudio notification when we can't start building (because we don't have the money to)
-				// Also don't play it when the time to build is actually 0 (i.e. normally dev cheats)
-				// to prevent overlapping with the ReadyAudio notification
-				var initialCost = RemainingCost / RemainingTime;
-				if (time != 0 && initialCost != 0 && pr.Cash + pr.Resources > initialCost)
-					Game.Sound.PlayNotification(owner.World.Map.Rules, owner, "Speech", Queue.Info.QueuedAudio, owner.Faction.InternalName);
 
 				Started = true;
 			}
@@ -471,23 +464,8 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			var costThisFrame = RemainingCost / RemainingTime;
-			if (costThisFrame != 0 && !pr.TakeCash(costThisFrame))
-			{
-				if (!insufficientFundsPlayed)
-				{
-					insufficientFundsPlayed = true;
-					foreach (var funds in insufficientFunds)
-						funds.InsufficientFunds(owner.PlayerActor);
-				}
-
+			if (costThisFrame != 0 && !pr.TakeCash(costThisFrame, true))
 				return;
-			}
-
-			if (insufficientFundsPlayed)
-				insufficientFundsPlayed = false;
-
-			foreach (var funds in insufficientFunds)
-				funds.SufficientFunds(owner.PlayerActor);
 
 			RemainingCost -= costThisFrame;
 			RemainingTime -= 1;

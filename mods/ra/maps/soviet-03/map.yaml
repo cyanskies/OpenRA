@@ -27,6 +27,7 @@ Players:
 	PlayerReference@Creeps:
 		Name: Creeps
 		NonCombatant: True
+		Enemies: Germany, USSR
 	PlayerReference@England:
 		Name: England
 		Faction: allies
@@ -966,10 +967,10 @@ Actors:
 		Location: 79,32
 		Owner: Soviet
 	BaseBuilding3: apwr
-		Location: 71,22
+		Location: 71,23
 		Owner: Soviet
 	BaseBuilding4: apwr
-		Location: 86,26
+		Location: 86,27
 		Owner: Soviet
 	BaseBuilding5: barl
 		Location: 74,24
@@ -1167,7 +1168,7 @@ Actors:
 		Location: 47,50
 		Owner: Neutral
 
-Rules: rules.yaml
+Rules: ra|rules/campaign-rules.yaml, ra|rules/campaign-tooltips.yaml, rules.yaml
 
 Weapons: weapons.yaml
 

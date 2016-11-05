@@ -2,7 +2,7 @@ MapFormat: 11
 
 RequiresMod: cnc
 
-Title: Steal The Detonator (b)
+Title: 06b: Steal the Detonator
 
 Author: Westwood Studios
 
@@ -569,7 +569,7 @@ Actors:
 		Location: 51,18
 		Owner: GDI
 	Chn2Actor1: weap
-		Location: 51,21
+		Location: 51,22
 		Owner: GDI
 	Atk1Actor1: gtwr
 		Location: 39,25

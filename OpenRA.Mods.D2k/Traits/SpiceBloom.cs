@@ -14,8 +14,10 @@ using System.Linq;
 using OpenRA.Effects;
 using OpenRA.GameRules;
 using OpenRA.Graphics;
+using OpenRA.Mods.Common;
 using OpenRA.Mods.Common.Graphics;
 using OpenRA.Mods.Common.Traits;
+using OpenRA.Mods.Common.Traits.Render;
 using OpenRA.Primitives;
 using OpenRA.Traits;
 
@@ -58,7 +60,7 @@ namespace OpenRA.Mods.D2k.Traits
 			var anim = new Animation(init.World, image);
 			anim.PlayRepeating(RenderSprites.NormalizeSequence(anim, init.GetDamageState(), GrowthSequences[0]));
 
-			yield return new SpriteActorPreview(anim, WVec.Zero, 0, p, rs.Scale);
+			yield return new SpriteActorPreview(anim, () => WVec.Zero, () => 0, p, rs.Scale);
 		}
 	}
 
@@ -80,7 +82,7 @@ namespace OpenRA.Mods.D2k.Traits
 			self = init.Self;
 
 			resLayer = self.World.WorldActor.Trait<ResourceLayer>();
-			resType = self.World.WorldActor.TraitsImplementing<ResourceType>().First(t => t.Info.Name == info.ResourceType);
+			resType = self.World.WorldActor.TraitsImplementing<ResourceType>().First(t => t.Info.Type == info.ResourceType);
 
 			var render = self.Trait<RenderSprites>();
 			anim = new AnimationWithOffset(new Animation(init.Self.World, render.GetImage(self)), null, () => self.IsDead);

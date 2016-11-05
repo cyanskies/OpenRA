@@ -10,9 +10,10 @@
 #endregion
 
 using OpenRA.Mods.Common.Traits;
+using OpenRA.Mods.Common.Traits.Render;
 using OpenRA.Traits;
 
-namespace OpenRA.Mods.D2k.Traits
+namespace OpenRA.Mods.D2k.Traits.Render
 {
 	[Desc("Displays a sprite when the carryable actor is waiting for pickup.")]
 	public class WithDecorationCarryableInfo : WithDecorationInfo, Requires<CarryableInfo>
@@ -30,9 +31,9 @@ namespace OpenRA.Mods.D2k.Traits
 			carryable = self.Trait<Carryable>();
 		}
 
-		public override bool ShouldRender(Actor self)
+		protected override bool ShouldRender(Actor self)
 		{
-			return carryable.Reserved;
+			return carryable.Reserved && base.ShouldRender(self);
 		}
 	}
 }

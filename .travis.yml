@@ -2,7 +2,7 @@
 # see travis-ci.org for details
 
 language: csharp
-mono: 4.2.1
+mono: 4.6.1
 
 # http://docs.travis-ci.com/user/migrating-from-legacy
 sudo: false
@@ -31,7 +31,7 @@ env:
 # Run the NUnit tests
 script:
  - travis_retry make all-dependencies
- - make all SDK="-sdk:4.0"
+ - make all SDK="-sdk:4.5"
  - make check
  - make check-scripts
  - make test

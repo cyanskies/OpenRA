@@ -16,7 +16,7 @@ using OpenRA.Graphics;
 using OpenRA.Mods.Common.Graphics;
 using OpenRA.Traits;
 
-namespace OpenRA.Mods.Common.Traits
+namespace OpenRA.Mods.Common.Traits.Render
 {
 	class WithGateSpriteBodyInfo : WithSpriteBodyInfo, IWallConnectorInfo, Requires<GateInfo>
 	{
@@ -26,6 +26,9 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Wall type for connections")]
 		public readonly string Type = "wall";
 
+		[Desc("Override sequence to use when fully open.")]
+		public readonly string OpenSequence = null;
+
 		public override object Create(ActorInitializer init) { return new WithGateSpriteBody(init, this); }
 
 		public override IEnumerable<IActorPreview> RenderPreviewSprites(ActorPreviewInitializer init, RenderSpritesInfo rs, string image, int facings, PaletteReference p)
@@ -33,7 +36,7 @@ namespace OpenRA.Mods.Common.Traits
 			var anim = new Animation(init.World, image);
 			anim.PlayFetchIndex(RenderSprites.NormalizeSequence(anim, init.GetDamageState(), Sequence), () => 0);
 
-			yield return new SpriteActorPreview(anim, WVec.Zero, 0, p, rs.Scale);
+			yield return new SpriteActorPreview(anim, () => WVec.Zero, () => 0, p, rs.Scale);
 		}
 
 		string IWallConnectorInfo.GetWallConnectionType()
@@ -42,10 +45,11 @@ namespace OpenRA.Mods.Common.Traits
 		}
 	}
 
-	class WithGateSpriteBody : WithSpriteBody, INotifyRemovedFromWorld, INotifyBuildComplete, IWallConnector
+	class WithGateSpriteBody : WithSpriteBody, INotifyRemovedFromWorld, IWallConnector, ITick
 	{
 		readonly WithGateSpriteBodyInfo gateInfo;
 		readonly Gate gate;
+		bool renderOpen;
 
 		public WithGateSpriteBody(ActorInitializer init, WithGateSpriteBodyInfo info)
 			: base(init, info, () => 0)
@@ -54,19 +58,39 @@ namespace OpenRA.Mods.Common.Traits
 			gate = init.Self.Trait<Gate>();
 		}
 
+		void UpdateState(Actor self)
+		{
+			if (renderOpen)
+				DefaultAnimation.PlayRepeating(NormalizeSequence(self, gateInfo.OpenSequence));
+			else
+				DefaultAnimation.PlayFetchIndex(NormalizeSequence(self, Info.Sequence), GetGateFrame);
+		}
+
+		void ITick.Tick(Actor self)
+		{
+			if (gateInfo.OpenSequence == null)
+				return;
+
+			if (gate.Position == gate.OpenPosition ^ renderOpen)
+			{
+				renderOpen = gate.Position == gate.OpenPosition;
+				UpdateState(self);
+			}
+		}
+
 		int GetGateFrame()
 		{
 			return int2.Lerp(0, DefaultAnimation.CurrentSequence.Length - 1, gate.Position, gate.OpenPosition);
 		}
 
-		public override void DamageStateChanged(Actor self, AttackInfo e)
+		protected override void DamageStateChanged(Actor self)
 		{
-			DefaultAnimation.PlayFetchIndex(NormalizeSequence(self, Info.Sequence), GetGateFrame);
+			UpdateState(self);
 		}
 
-		public override void BuildingComplete(Actor self)
+		protected override void OnBuildComplete(Actor self)
 		{
-			DefaultAnimation.PlayFetchIndex(NormalizeSequence(self, Info.Sequence), GetGateFrame);
+			UpdateState(self);
 			UpdateNeighbours(self);
 		}
 
@@ -83,7 +107,7 @@ namespace OpenRA.Mods.Common.Traits
 				rb.SetDirty();
 		}
 
-		public void RemovedFromWorld(Actor self)
+		void INotifyRemovedFromWorld.RemovedFromWorld(Actor self)
 		{
 			UpdateNeighbours(self);
 		}

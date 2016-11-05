@@ -24,7 +24,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 {
 	static class UpgradeRules
 	{
-		public const int MinimumSupportedVersion = 20151224;
+		public const int MinimumSupportedVersion = 20160508;
 
 		internal static void TryUpdateColor(ref string value)
 		{
@@ -92,775 +92,525 @@ namespace OpenRA.Mods.Common.UtilityCommands
 			catch { }
 		}
 
-		internal static void UpgradeActorRules(int engineVersion, ref List<MiniYamlNode> nodes, MiniYamlNode parent, int depth)
+		internal static void UpgradeActorRules(ModData modData, int engineVersion, ref List<MiniYamlNode> nodes, MiniYamlNode parent, int depth)
 		{
+			var addNodes = new List<MiniYamlNode>();
+
 			foreach (var node in nodes)
 			{
-				if (engineVersion < 20151225 && depth == 2)
+				if (engineVersion < 20160515)
 				{
-					if (node.Key == "Color")
-					{
-						if (parent.Key.StartsWith("FixedColorPalette"))
-							TryUpdateHSLColor(ref node.Value.Value);
-						else
-							TryUpdateColor(ref node.Value.Value);
-					}
-					else if (node.Key == "RadarPingColor" || node.Key == "SelectionBoxColor" || node.Key == "BarColor")
-						TryUpdateColor(ref node.Value.Value);
-					else if (node.Key == "Fog" || node.Key == "Shroud" || node.Key == "ParticleColors")
-						TryUpdateColors(ref node.Value.Value);
+					// Use generic naming for building demolition using explosives.
+					if (node.Key == "C4Demolition")
+						node.Key = "Demolition";
+
+					foreach (var n in node.Value.Nodes)
+						if (n.Key == "C4Delay")
+							n.Key = "DetonationDelay";
 				}
 
-				// DeathType on Explodes was renamed to DeathTypes
-				if (engineVersion < 20151225)
+				// WithSmoke was refactored to become more generic and Sequence/Image notation has been unified.
+				if (engineVersion < 20160528)
 				{
-					if (node.Key == "Explodes")
+					if (depth == 1 && node.Key.StartsWith("WithSmoke"))
 					{
-						var dt = node.Value.Nodes.FirstOrDefault(n => n.Key == "DeathType");
-						if (dt != null)
-							dt.Key = "DeathTypes";
-					}
-				}
+						var s = node.Value.Nodes.FirstOrDefault(n => n.Key == "Sequence");
+						if (s != null)
+							s.Key = "Image";
 
-				// Upgrades on DeployToUpgrade were renamed to DeployedUpgrades
-				if (engineVersion < 20151122)
-				{
-					if (node.Key == "DeployToUpgrade")
-					{
-						var u = node.Value.Nodes.FirstOrDefault(n => n.Key == "Upgrades");
-						if (u != null)
-							u.Key = "DeployedUpgrades";
-					}
-				}
-
-				if (engineVersion < 20151225)
-				{
-					// Rename WithTurret to WithSpriteTurret
-					if (depth == 1 && node.Key.StartsWith("WithTurret"))
-					{
 						var parts = node.Key.Split('@');
-						node.Key = "WithSpriteTurret";
-						if (parts.Length > 1)
-							node.Key += "@" + parts[1];
-					}
-
-					if (depth == 1 && node.Key.StartsWith("-WithTurret"))
-					{
-						var parts = node.Key.Split('@');
-						node.Key = "-WithSpriteTurret";
-						if (parts.Length > 1)
-							node.Key += "@" + parts[1];
-					}
-
-					// Rename WithBarrel to WithSpriteBarrel
-					if (depth == 1 && node.Key.StartsWith("WithBarrel"))
-					{
-						var parts = node.Key.Split('@');
-						node.Key = "WithSpriteBarrel";
-						if (parts.Length > 1)
-							node.Key += "@" + parts[1];
-					}
-
-					if (depth == 1 && node.Key.StartsWith("-WithBarrel"))
-					{
-						var parts = node.Key.Split('@');
-						node.Key = "-WithSpriteBarrel";
-						if (parts.Length > 1)
-							node.Key += "@" + parts[1];
-					}
-
-					// Rename WithReloadingTurret to WithReloadingSpriteTurret
-					if (depth == 1 && node.Key.StartsWith("WithReloadingTurret"))
-					{
-						var parts = node.Key.Split('@');
-						node.Key = "WithReloadingSpriteTurret";
-						if (parts.Length > 1)
-							node.Key += "@" + parts[1];
-					}
-
-					if (depth == 1 && node.Key.StartsWith("-WithReloadingTurret"))
-					{
-						var parts = node.Key.Split('@');
-						node.Key = "-WithReloadingSpriteTurret";
+						node.Key = "WithDamageOverlay";
 						if (parts.Length > 1)
 							node.Key += "@" + parts[1];
 					}
 				}
 
-				// Mobile actors immobilized by Carryable, Cargo, DeployToUpgrade, and/or others using upgrade(s)
-				if (engineVersion < 20151225 && depth == 0)
+				if (engineVersion < 20160604 && node.Key.StartsWith("ProvidesTechPrerequisite"))
 				{
-					var notMobile = "notmobile";
+					var name = node.Value.Nodes.First(n => n.Key == "Name");
+					var id = name.Value.Value.ToLowerInvariant().Replace(" ", "");
+					node.Value.Nodes.Add(new MiniYamlNode("Id", id));
+				}
 
-					var mobileNode = node.Value.Nodes.Find(n => n.Key == "Mobile");
-					var carryableNode = node.Value.Nodes.Find(n => n.Key == "Carryable");
-					var cargoNode = node.Value.Nodes.Find(n => n.Key == "Cargo");
-					var deployToUpgradeNode = node.Value.Nodes.Find(n => n.Key == "DeployToUpgrade");
-					var disableUpgradeNode = node.Value.Nodes.Find(n => n.Key == "DisableUpgrade");
-					var disableMovementOnUpgradeNode = node.Value.Nodes.Find(n => n.Key == "DisableMovementOnUpgrade");
-
-					Action<MiniYamlNode, string> addNotMobileToTraitUpgrades = (trait, upgradesKey) =>
+				if (engineVersion < 20160611)
+				{
+					// Deprecated WithSpriteRotorOverlay
+					if (depth == 1 && node.Key.StartsWith("WithSpriteRotorOverlay"))
 					{
-						if (trait != null)
+						var parts = node.Key.Split('@');
+						node.Key = "WithIdleOverlay";
+						if (parts.Length > 1)
+							node.Key += "@" + parts[1];
+
+						Console.WriteLine("The 'WithSpriteRotorOverlay' trait has been removed.");
+						Console.WriteLine("Its functionality can be fully replicated with 'WithIdleOverlay' + upgrades.");
+						Console.WriteLine("Look at the helicopters in our RA / C&C1  mods for implementation details.");
+					}
+				}
+
+				// Map difficulty configuration was split to a generic trait
+				if (engineVersion < 20160614 && node.Key.StartsWith("MapOptions"))
+				{
+					var difficultiesNode = node.Value.Nodes.FirstOrDefault(n => n.Key == "Difficulties");
+					if (difficultiesNode != null)
+					{
+						var difficulties = FieldLoader.GetValue<string[]>("Difficulties", difficultiesNode.Value.Value)
+							.ToDictionary(d => d.Replace(" ", "").ToLowerInvariant(), d => d);
+						node.Value.Nodes.Remove(difficultiesNode);
+
+						var childNodes = new List<MiniYamlNode>()
 						{
-							var upgrades = trait.Value.Nodes.Find(u => u.Key == upgradesKey);
-							if (upgrades == null)
-								trait.Value.Nodes.Add(new MiniYamlNode(upgradesKey, notMobile));
-							else if (string.IsNullOrEmpty(upgrades.Value.Value))
-								upgrades.Value.Value = notMobile;
-							else if (!upgrades.Value.Value.Contains(notMobile))
-								upgrades.Value.Value += ", " + notMobile;
-						}
-					};
-
-					if (mobileNode != null)
-					{
-						var mobileUpgrades = mobileNode.Value.Nodes.Find(n => n.Key == "UpgradeTypes");
-						var mobileUpgradeMaxEnabledLevel = mobileNode.Value.Nodes.Find(n => n.Key == "UpgradeMaxEnabledLevel");
-						var comma = new char[] { ',' };
-
-						Func<bool> addUpgradeMaxEnabledLevelNode = () =>
-						{
-							if (mobileUpgradeMaxEnabledLevel == null)
-							{
-								mobileUpgradeMaxEnabledLevel = new MiniYamlNode("UpgradeMaxEnabledLevel", "0");
-								mobileNode.Value.Nodes.Add(mobileUpgradeMaxEnabledLevel);
-								return true;
-							}
-							else
-								return mobileUpgradeMaxEnabledLevel.Value.Value == "0";
+							new MiniYamlNode("ID", "difficulty"),
+							new MiniYamlNode("Label", "Difficulty"),
+							new MiniYamlNode("Values", new MiniYaml("", difficulties.Select(kv => new MiniYamlNode(kv.Key, kv.Value)).ToList()))
 						};
 
-						// If exactly one upgrade type is in UpgradeTypes and UpgradeMaxEnabledLevel is/can be 0 , then use it as notmobile
-						if (mobileUpgrades != null && !string.IsNullOrEmpty(mobileUpgrades.Value.Value)
-							&& !mobileUpgrades.Value.Value.Contains(",") && addUpgradeMaxEnabledLevelNode())
-							notMobile = mobileUpgrades.Value.Value;
+						var difficultyNode = node.Value.Nodes.FirstOrDefault(n => n.Key == "Difficulty");
+						if (difficultyNode != null)
+						{
+							childNodes.Add(new MiniYamlNode("Default", difficultyNode.Value.Value.Replace(" ", "").ToLowerInvariant()));
+							node.Value.Nodes.Remove(difficultyNode);
+						}
+						else
+							childNodes.Add(new MiniYamlNode("Default", difficulties.Keys.First()));
 
-						if (mobileUpgradeMaxEnabledLevel != null && mobileUpgradeMaxEnabledLevel.Value.Value != "0")
-							Console.WriteLine("\t\t" + node.Key + " actor rules may require manual upgrading for immobilization upgrade logic.");
+						var lockedNode = node.Value.Nodes.FirstOrDefault(n => n.Key == "DifficultyLocked");
+						if (lockedNode != null)
+						{
+							childNodes.Add(new MiniYamlNode("Locked", lockedNode.Value.Value));
+							node.Value.Nodes.Remove(lockedNode);
+						}
+
+						addNodes.Add(new MiniYamlNode("ScriptLobbyDropdown@difficulty", new MiniYaml("", childNodes)));
+					}
+				}
+
+				if (engineVersion < 20160702)
+				{
+					if (node.Key.StartsWith("GivesExperience"))
+					{
+						var ff = "FriendlyFire";
+						var ffNode = node.Value.Nodes.FirstOrDefault(n => n.Key == ff);
+						if (ffNode != null)
+						{
+							var newStanceStr = "";
+							if (FieldLoader.GetValue<bool>(ff, ffNode.Value.Value))
+								newStanceStr = "Neutral, Enemy, Ally";
+							else
+								newStanceStr = "Neutral, Enemy";
+
+							node.Value.Nodes.Add(new MiniYamlNode("ValidStances", newStanceStr));
+						}
+
+						node.Value.Nodes.Remove(ffNode);
+					}
+					else if (node.Key.StartsWith("GivesBounty"))
+					{
+						var stancesNode = node.Value.Nodes.FirstOrDefault(n => n.Key == "Stances");
+						if (stancesNode != null)
+							stancesNode.Key = "ValidStances";
+					}
+				}
+
+				if (engineVersion < 20160703)
+				{
+					if (node.Key.StartsWith("WithDecoration") || node.Key.StartsWith("WithRankDecoration") || node.Key.StartsWith("WithDecorationCarryable"))
+					{
+						var stancesNode = node.Value.Nodes.FirstOrDefault(n => n.Key == "Stances");
+						if (stancesNode != null)
+							stancesNode.Key = "ValidStances";
+					}
+				}
+
+				if (engineVersion < 20160704)
+				{
+					if (node.Key.Contains("PoisonedByTiberium"))
+					{
+						node.Key = node.Key.Replace("PoisonedByTiberium", "DamagedByTerrain");
+						if (!node.Key.StartsWith("-"))
+						{
+							if (node.Value.Nodes.Any(a => a.Key == "Resources"))
+								node.Value.Nodes.Where(n => n.Key == "Resources").Do(n => n.Key = "Terrain");
+							else
+								node.Value.Nodes.Add(new MiniYamlNode("Terrain", new MiniYaml("Tiberium, BlueTiberium")));
+
+							Console.WriteLine("PoisonedByTiberium: Weapon isn't converted. Copy out the appropriate");
+							Console.WriteLine("weapon's Damage, ReloadDelay and DamageTypes to DamagedByTerrain's Damage,");
+							Console.WriteLine("DamageInterval and DamageTypes, respectively, then remove the Weapon tag.");
+						}
+					}
+
+					if (node.Key.Contains("DamagedWithoutFoundation"))
+					{
+						node.Key = node.Key.Replace("DamagedWithoutFoundation", "DamagedByTerrain");
+						if (!node.Key.StartsWith("-"))
+						{
+							Console.WriteLine("DamagedWithoutFoundation: Weapon isn't converted. Copy out the appropriate");
+							Console.WriteLine("weapon's Damage, ReloadDelay and DamageTypes to DamagedByTerrain's Damage,");
+							Console.WriteLine("DamageInterval and DamageTypes, respectively, then remove the Weapon tag.");
+
+							Console.WriteLine("SafeTerrain isn't converted. Setup an inverted check using Terrain.");
+
+							node.Value.Nodes.Add(new MiniYamlNode("StartOnThreshold", new MiniYaml("true")));
+							if (!node.Value.Nodes.Any(a => a.Key == "DamageThreshold"))
+								node.Value.Nodes.Add(new MiniYamlNode("DamageThreshold", new MiniYaml("50")));
+						}
+					}
+				}
+
+				// ParticleDensityFactor was converted from a float to an int
+				if (engineVersion < 20160713 && node.Key == "WeatherOverlay")
+				{
+					var density = node.Value.Nodes.FirstOrDefault(n => n.Key == "ParticleDensityFactor");
+					if (density != null)
+					{
+						var value = float.Parse(density.Value.Value, CultureInfo.InvariantCulture);
+						value = (int)Math.Round(value * 10000, 0);
+						density.Value.Value = value.ToString();
+					}
+				}
+
+				if (engineVersion < 20160717)
+				{
+					if (depth == 0)
+					{
+						var selectionDecorations = node.Value.Nodes.FirstOrDefault(n => n.Key == "SelectionDecorations");
+						if (selectionDecorations != null)
+							node.Value.Nodes.Add(selectionDecorations = new MiniYamlNode("WithSpriteControlGroup", ""));
+					}
+				}
+
+				if (engineVersion < 20160818)
+				{
+					if (depth == 1 && node.Key.StartsWith("UpgradeOnDamage"))
+					{
+						var parts = node.Key.Split('@');
+						node.Key = "UpgradeOnDamageState";
+						if (parts.Length > 1)
+							node.Key += "@" + parts[1];
+					}
+				}
+
+				// DisplayTimer was replaced by DisplayTimerStances
+				if (engineVersion < 20160820)
+				{
+					if (node.Key == "DisplayTimer")
+					{
+						node.Key = "DisplayTimerStances";
+
+						if (node.Value.Value.ToLower() == "false")
+							node.Value.Value = "None";
+						else
+							node.Value.Value = "Ally, Neutral, Enemy";
+					}
+				}
+
+				if (engineVersion < 20160821)
+				{
+					// Shifted custom build time properties to Buildable
+					if (depth == 0)
+					{
+						var cbtv = node.Value.Nodes.FirstOrDefault(n => n.Key == "CustomBuildTimeValue");
+						if (cbtv != null)
+						{
+							var bi = node.Value.Nodes.FirstOrDefault(n => n.Key == "Buildable");
+
+							if (bi == null)
+								node.Value.Nodes.Add(bi = new MiniYamlNode("Buildable", ""));
+
+							var value = cbtv.Value.Nodes.First(n => n.Key == "Value");
+							value.Key = "BuildDuration";
+							bi.Value.Nodes.Add(value);
+							bi.Value.Nodes.Add(new MiniYamlNode("BuildDurationModifier", "40"));
+						}
+
+						node.Value.Nodes.RemoveAll(n => n.Key == "CustomBuildTimeValue");
+						node.Value.Nodes.RemoveAll(n => n.Key == "-CustomBuildTimeValue");
+					}
+
+					// rename ProductionQueue.BuildSpeed
+					if (node.Key == "BuildSpeed")
+					{
+						node.Key = "BuildDurationModifier";
+						var oldValue = FieldLoader.GetValue<int>(node.Key, node.Value.Value);
+						oldValue = oldValue * 100 / 40;
+						node.Value.Value = oldValue.ToString();
+					}
+				}
+
+				if (engineVersion < 20160826 && depth == 0)
+				{
+					// Removed debug visualization
+					node.Value.Nodes.RemoveAll(n => n.Key == "PathfinderDebugOverlay");
+				}
+
+				// AlliedMissiles on JamsMissiles was changed from a boolean to a Stances field and renamed
+				if (engineVersion < 20160827)
+				{
+					if (node.Key == "JamsMissiles")
+					{
+						var alliedMissiles = node.Value.Nodes.FirstOrDefault(n => n.Key == "AlliedMissiles");
+						if (alliedMissiles != null)
+						{
+							alliedMissiles.Value.Value = FieldLoader.GetValue<bool>("AlliedMissiles", alliedMissiles.Value.Value) ? "Ally, Neutral, Enemy" : "Neutral, Enemy";
+							alliedMissiles.Key = "DeflectionStances";
+						}
+					}
+				}
+
+				// Add a warning to add WithRearmAnimation to actors that might need it.
+				// Update rule added during prep-1609 stable period, date needs fixing after release.
+				if (engineVersion < 20160918 && depth == 2)
+				{
+					if (node.Key == "RearmBuildings")
+						foreach (var host in node.Value.Value.Split(','))
+							Console.WriteLine("Actor type `{0}` is denoted as a RearmBuilding. Consider adding the `WithRearmAnimation` trait to it.".F(host));
+				}
+
+				// Resource type properties were renamed, and support for tooltips added
+				if (engineVersion < 20160925)
+				{
+					if (node.Key.StartsWith("ResourceType"))
+					{
+						var image = node.Value.Nodes.FirstOrDefault(n => n.Key == "Sequence");
+						if (image != null)
+							image.Key = "Image";
+
+						var sequences = node.Value.Nodes.FirstOrDefault(n => n.Key == "Variants");
+						if (sequences != null)
+							sequences.Key = "Sequences";
+
+						var name = node.Value.Nodes.FirstOrDefault(n => n.Key == "Name");
+						if (name != null)
+							node.Value.Nodes.Add(new MiniYamlNode("Type", name.Value.Value));
+					}
+				}
+
+				// Renamed AttackSequence to DefaultAttackSequence in WithInfantryBody.
+				if (engineVersion < 20161014)
+				{
+					if (node.Key == "WithInfantryBody")
+					{
+						var attackSequence = node.Value.Nodes.FirstOrDefault(n => n.Key == "AttackSequence");
+						if (attackSequence != null)
+							attackSequence.Key = "DefaultAttackSequence";
+					}
+				}
+
+				// Move production description from Tooltip to Buildable
+				if (engineVersion < 20161016)
+				{
+					var tooltipChild = node.Value.Nodes.FirstOrDefault(n => n.Key == "Tooltip" || n.Key == "DisguiseToolTip");
+					if (tooltipChild != null)
+					{
+						var descNode = tooltipChild.Value.Nodes.FirstOrDefault(n => n.Key == "Description");
+						if (descNode != null)
+						{
+							var buildableNode = node.Value.Nodes.FirstOrDefault(n => n.Key == "Buildable");
+							if (buildableNode == null)
+								node.Value.Nodes.Add(buildableNode = new MiniYamlNode("Buildable", ""));
+
+							buildableNode.Value.Nodes.Add(descNode);
+							tooltipChild.Value.Nodes.Remove(descNode);
+						}
+					}
+				}
+
+				// Move production icon sequence from Tooltip to Buildable
+				if (engineVersion < 20161022)
+				{
+					var tooltipChild = node.Value.Nodes.FirstOrDefault(n => n.Key == "Tooltip" || n.Key == "DisguiseToolTip");
+					if (tooltipChild != null)
+					{
+						var iconNode = tooltipChild.Value.Nodes.FirstOrDefault(n => n.Key == "Icon");
+						if (iconNode != null)
+						{
+							var buildableNode = node.Value.Nodes.FirstOrDefault(n => n.Key == "Buildable");
+							if (buildableNode == null)
+								node.Value.Nodes.Add(buildableNode = new MiniYamlNode("Buildable", ""));
+
+							buildableNode.Value.Nodes.Add(iconNode);
+							tooltipChild.Value.Nodes.Remove(iconNode);
+						}
+					}
+				}
+
+				UpgradeActorRules(modData, engineVersion, ref node.Value.Nodes, node, depth + 1);
+			}
+
+			foreach (var a in addNodes)
+				nodes.Add(a);
+		}
+
+		internal static void UpgradeWeaponRules(ModData modData, int engineVersion, ref List<MiniYamlNode> nodes, MiniYamlNode parent, int depth)
+		{
+			foreach (var node in nodes)
+			{
+				// Refactor Missile RangeLimit from ticks to WDist
+				if (engineVersion < 20160509)
+				{
+					var weapRange = node.Value.Nodes.FirstOrDefault(n => n.Key == "Range");
+					var projectile = node.Value.Nodes.FirstOrDefault(n => n.Key == "Projectile");
+
+					if (projectile != null && weapRange != null && projectile.Value.Value == "Missile")
+					{
+						var oldWDist = FieldLoader.GetValue<WDist>("Range", weapRange.Value.Value);
+						var rangeLimitNode = projectile.Value.Nodes.FirstOrDefault(x => x.Key == "RangeLimit");
+
+						// RangeLimit is now a WDist value, so for the conversion, we take weapon range and add 20% on top.
+						// Overly complicated calculations using Range, Speed and the old RangeLimit value would be rather pointless,
+						// because currently most mods have somewhat arbitrary, usually too high and in a few cases too low RangeLimits anyway.
+						var newValue = oldWDist.Length * 120 / 100;
+						var newCells = newValue / 1024;
+						var newCellPart = newValue % 1024;
+
+						if (rangeLimitNode != null)
+							rangeLimitNode.Value.Value = newCells.ToString() + "c" + newCellPart.ToString();
 						else
 						{
-							Action<string> addImmobilizeUpgradeType = upgradeType =>
-							{
-								if (mobileUpgrades == null)
-								{
-									mobileUpgrades = new MiniYamlNode("UpgradeTypes", upgradeType);
-									mobileNode.Value.Nodes.Add(mobileUpgrades);
-								}
-								else if (string.IsNullOrEmpty(mobileUpgrades.Value.Value))
-									mobileUpgrades.Value.Value = upgradeType;
-								else if (!mobileUpgrades.Value.Value.Split(comma).Contains(upgradeType))
-									mobileUpgrades.Value.Value += ", " + upgradeType;
-							};
-
-							Predicate<string> addImmobilizeUpgradeTypes = upgradeTypes =>
-							{
-								if (string.IsNullOrEmpty(upgradeTypes))
-									return false;
-
-								foreach (var upgradeType in upgradeTypes.Split(comma))
-									addImmobilizeUpgradeType(upgradeType);
-								return true;
-							};
-
-							Predicate<MiniYamlNode> addUpgradeTypeFromTrait = trait =>
-							{
-								var upgradeTypesNode = trait.Value.Nodes.Find(n => n.Key == "UpgradeTypes");
-								if (upgradeTypesNode == null)
-									return false;
-
-								addUpgradeMaxEnabledLevelNode();
-								return addImmobilizeUpgradeTypes(upgradeTypesNode.Value.Value);
-							};
-
-							var noticeWritten = false;
-
-							Action writeNotice = () =>
-							{
-								if (noticeWritten)
-									return;
-								Console.WriteLine("\t\t" + node.Key + " actor rules may require manual upgrading for immobilization upgrade logic.");
-								noticeWritten = true;
-							};
-
-							if (disableUpgradeNode != null && !addUpgradeTypeFromTrait(disableUpgradeNode))
-							{
-								writeNotice();
-								Console.WriteLine("\t\t\tOne or more upgrades may need to be copied from the DisableUpgrade trait to the Mobile trait.");
-							}
-
-							if (disableMovementOnUpgradeNode != null)
-							{
-								if (addUpgradeTypeFromTrait(disableMovementOnUpgradeNode))
-									parent.Value.Nodes.Remove(disableMovementOnUpgradeNode);
-								else
-								{
-									writeNotice();
-									Console.WriteLine("\t\t\tOne or more upgrades may need to be moved from the DisableMovementOnUpgrade trait to the Mobile trait.");
-									Console.WriteLine("\t\t\t\tRemember to remove the DisableMovementOnUpgrade trait.");
-								}
-							}
-
-							if (carryableNode != null || cargoNode != null || deployToUpgradeNode != null)
-							{
-								addUpgradeMaxEnabledLevelNode();
-								addImmobilizeUpgradeTypes(notMobile);
-
-								addNotMobileToTraitUpgrades(carryableNode, "CarryableUpgrades");
-								addNotMobileToTraitUpgrades(cargoNode, "LoadingUpgrades");
-								addNotMobileToTraitUpgrades(deployToUpgradeNode, "DeployedUpgrades");
-							}
-						}
-					}
-					else if (!node.Value.Nodes.Exists(n => n.Key == "Husk" || n.Key == "Building" || n.Key == "Aircraft" || n.Key == "Immobile"))
-					{
-						if (carryableNode != null || cargoNode != null || deployToUpgradeNode != null)
-						{
-							Console.WriteLine("\t\tIf " + node.Key
-								+ " has a Mobile trait then adding the following with <upgrade> substituted by an immobilization upgrade for "
-								+ node.Key + " may be neeeded:");
-
-							if (carryableNode != null)
-							{
-								Console.WriteLine("\t\t\tCarryable:");
-								Console.WriteLine("\t\t\t\tCarryableUpgrades: <upgrade>");
-							}
-
-							if (cargoNode != null)
-							{
-								Console.WriteLine("\t\t\tCargo:");
-								Console.WriteLine("\t\t\t\tLoadingUpgrades: <upgrade>");
-							}
-
-							if (deployToUpgradeNode != null)
-							{
-								Console.WriteLine("\t\t\tDeployToUpgrade:");
-								Console.WriteLine("\t\t\t\tDeployedUpgrades: <upgrade>");
-							}
-						}
-
-						var disableUpgradeUpgradeTypesNode = disableUpgradeNode != null
-							? disableUpgradeNode.Value.Nodes.Find(n => n.Key == "UpgradeTypes")
-							: null;
-						var disableMovementOnUpgradeUpgradeTypesNode = disableMovementOnUpgradeNode != null
-							? disableMovementOnUpgradeNode.Value.Nodes.Find(n => n.Key == "UpgradeTypes")
-							: null;
-
-						if (disableUpgradeUpgradeTypesNode != null || disableMovementOnUpgradeUpgradeTypesNode != null)
-							Console.WriteLine("\t\t" + node.Key + " actor rules may require manual upgrading for immobilization upgrade logic.");
-
-						if (disableUpgradeUpgradeTypesNode != null)
-							Console.WriteLine("\t\t\tDisableUpgrade UpgradeTypes: " + disableUpgradeUpgradeTypesNode.Value.Value);
-
-						if (disableMovementOnUpgradeUpgradeTypesNode != null)
-							Console.WriteLine("\t\t\tDisableMovementOnUpgrade UpgradeTypes: " + disableMovementOnUpgradeUpgradeTypesNode.Value.Value);
-
-						if (disableMovementOnUpgradeNode != null)
-							node.Value.Nodes.Remove(disableMovementOnUpgradeNode);
-					}
-				}
-
-				// 'CloseEnough' on 'RepairableNear' uses WDist now
-				if (engineVersion < 20151225)
-				{
-					if (node.Key == "RepairableNear")
-					{
-						var ce = node.Value.Nodes.FirstOrDefault(n => n.Key == "CloseEnough");
-						if (ce != null && !ce.Value.Value.Contains("c"))
-							ce.Value.Value = ce.Value.Value + "c0";
-					}
-				}
-
-				// Added width support for line particles
-				if (engineVersion < 20151225 && node.Key == "WeatherOverlay")
-				{
-					var useSquares = node.Value.Nodes.FirstOrDefault(n => n.Key == "UseSquares");
-					if (useSquares != null && !FieldLoader.GetValue<bool>("UseSquares", useSquares.Value.Value))
-						node.Value.Nodes.Add(new MiniYamlNode("ParticleSize", "1, 1"));
-				}
-
-				// Overhauled the actor decorations traits
-				if (engineVersion < 20151226)
-				{
-					if (depth == 1 && (node.Key.StartsWith("WithDecoration") || node.Key.StartsWith("WithRankDecoration")))
-					{
-						node.Value.Nodes.RemoveAll(n => n.Key == "Scale");
-						node.Value.Nodes.RemoveAll(n => n.Key == "Offset");
-						var sd = node.Value.Nodes.FirstOrDefault(n => n.Key == "SelectionDecoration");
-						if (sd != null)
-							sd.Key = "RequiresSelection";
-
-						var reference = node.Value.Nodes.FirstOrDefault(n => n.Key == "ReferencePoint");
-						if (reference != null)
-						{
-							var values = FieldLoader.GetValue<string[]>("ReferencePoint", reference.Value.Value);
-							values = values.Where(v => v != "HCenter" && v != "VCenter").ToArray();
-							if (values.Length == 0)
-								values = new[] { "Center" };
-
-							reference.Value.Value = FieldSaver.FormatValue(values);
-						}
-
-						var stance = Stance.Ally;
-						var showToAllies = node.Value.Nodes.FirstOrDefault(n => n.Key == "ShowToAllies");
-						if (showToAllies != null && !FieldLoader.GetValue<bool>("ShowToAllies", showToAllies.Value.Value))
-							stance ^= Stance.Ally;
-						var showToEnemies = node.Value.Nodes.FirstOrDefault(n => n.Key == "ShowToEnemies");
-						if (showToEnemies != null && FieldLoader.GetValue<bool>("ShowToEnemies", showToEnemies.Value.Value))
-							stance |= Stance.Enemy;
-
-						if (stance != Stance.Ally)
-							node.Value.Nodes.Add(new MiniYamlNode("Stance", FieldSaver.FormatValue(stance)));
-
-						node.Value.Nodes.RemoveAll(n => n.Key == "ShowToAllies");
-						node.Value.Nodes.RemoveAll(n => n.Key == "ShowToEnemies");
-					}
-
-					if (depth == 1 && node.Key == "Fake")
-					{
-						node.Key = "WithDecoration@fake";
-						node.Value.Nodes.Add(new MiniYamlNode("RequiresSelection", "true"));
-						node.Value.Nodes.Add(new MiniYamlNode("Image", "pips"));
-						node.Value.Nodes.Add(new MiniYamlNode("Sequence", "tag-fake"));
-						node.Value.Nodes.Add(new MiniYamlNode("ReferencePoint", "Top"));
-						node.Value.Nodes.Add(new MiniYamlNode("ZOffset", "256"));
-					}
-
-					if (depth == 0 && node.Value.Nodes.Any(n => n.Key.StartsWith("PrimaryBuilding")))
-					{
-						var decNodes = new List<MiniYamlNode>();
-						decNodes.Add(new MiniYamlNode("RequiresSelection", "true"));
-						decNodes.Add(new MiniYamlNode("Image", "pips"));
-						decNodes.Add(new MiniYamlNode("Sequence", "tag-primary"));
-						decNodes.Add(new MiniYamlNode("ReferencePoint", "Top"));
-						decNodes.Add(new MiniYamlNode("ZOffset", "256"));
-						decNodes.Add(new MiniYamlNode("UpgradeTypes", "primary"));
-						decNodes.Add(new MiniYamlNode("UpgradeMinEnabledLevel", "1"));
-						node.Value.Nodes.Add(new MiniYamlNode("WithDecoration@primary", new MiniYaml("", decNodes)));
-					}
-				}
-
-				// Refactored the low resources notification to a separate trait
-				if (engineVersion < 20151227 && node.Key == "Player")
-				{
-					var resourcesNode = node.Value.Nodes.FirstOrDefault(x => x.Key == "PlayerResources");
-
-					if (resourcesNode != null)
-					{
-						var intervalNode = resourcesNode.Value.Nodes.FirstOrDefault(x => x.Key == "AdviceInterval");
-						var storageNode = new MiniYamlNode("ResourceStorageWarning", "");
-
-						if (intervalNode != null)
-						{
-							// The time value is now in seconds, not ticks. We
-							// divide by 25 ticks per second at Normal.
-							int oldInterval;
-							if (int.TryParse(intervalNode.Value.Value, out oldInterval))
-								storageNode.Value.Nodes.Add(new MiniYamlNode("AdviceInterval", (oldInterval / 25).ToString()));
-							resourcesNode.Value.Nodes.Remove(intervalNode);
-						}
-
-						node.Value.Nodes.Add(storageNode);
-					}
-				}
-
-				// Refactored Health.Radius to HitShapes
-				if (engineVersion < 20151227)
-				{
-					if (node.Key.StartsWith("Health"))
-					{
-						var radius = node.Value.Nodes.FirstOrDefault(x => x.Key == "Radius");
-						if (radius != null)
-						{
-							var radiusValue = FieldLoader.GetValue<string>("Radius", radius.Value.Value);
-							node.Value.Nodes.Add(new MiniYamlNode("Shape", "Circle"));
-
-							var shape = node.Value.Nodes.First(x => x.Key == "Shape");
-							shape.Value.Nodes.Add(new MiniYamlNode("Radius", radiusValue));
-
-							node.Value.Nodes.Remove(radius);
+							// Since the old default was 'unlimited', we're using weapon range * 1.2 for missiles not defining a custom RangeLimit as well
+							projectile.Value.Nodes.Add(new MiniYamlNode("RangeLimit", newCells.ToString() + "c" + newCellPart.ToString()));
 						}
 					}
 				}
 
-				// Remove obsolete TransformOnPassenger trait.
-				if (engineVersion < 20160102)
+				// Streamline some projectile property names and functionality
+				if (engineVersion < 20160601)
 				{
-					var removed = node.Value.Nodes.RemoveAll(x => x.Key.Contains("TransformOnPassenger"));
-					if (removed > 0)
-					{
-						Console.WriteLine("TransformOnPassenger has been removed.");
-						Console.WriteLine("Use the upgrades system to apply modifiers to the transport actor instead.");
-					}
+					if (node.Key == "Sequence")
+						node.Key = "Sequences";
+
+					if (node.Key == "TrailSequence")
+						node.Key = "TrailSequences";
+
+					if (node.Key == "Trail")
+						node.Key = "TrailImage";
+
+					if (node.Key == "Velocity")
+						node.Key = "Speed";
 				}
 
-				if (engineVersion < 20160103)
+				// Rename LaserZap BeamDuration to just Duration
+				if (engineVersion < 20161009)
 				{
-					// Overhauled WithActiveAnimation -> WithIdleAnimation
-					if (node.Key == "WithActiveAnimation")
-					{
-						node.Key = "WithIdleAnimation";
-						foreach (var n in node.Value.Nodes)
-							if (n.Key == "Sequence")
-								n.Key = "Sequences";
-					}
-				}
-
-				if (engineVersion < 20160107 && depth == 1 && node.Key.StartsWith("Cloak"))
-				{
-					var defaultCloakType = Traits.UncloakType.Attack
-						| Traits.UncloakType.Unload | Traits.UncloakType.Infiltrate | Traits.UncloakType.Demolish;
-
-					// Merge Uncloak types
-					var t = defaultCloakType;
-					for (var i = node.Value.Nodes.Count - 1; i >= 0; i--)
-					{
-						var n = node.Value.Nodes[i];
-						var v = string.Compare(n.Value.Value, "true", true) == 0;
-						Traits.UncloakType flag;
-						if (n.Key == "UncloakOnAttack")
-							flag = Traits.UncloakType.Attack;
-						else if (n.Key == "UncloakOnMove")
-							flag = Traits.UncloakType.Move;
-						else if (n.Key == "UncloakOnUnload")
-							flag = Traits.UncloakType.Unload;
-						else if (n.Key == "UncloakOnInfiltrate")
-							flag = Traits.UncloakType.Infiltrate;
-						else if (n.Key == "UncloakOnDemolish")
-							flag = Traits.UncloakType.Demolish;
-						else
-							continue;
-						t = v ? t | flag : t & ~flag;
-						node.Value.Nodes.Remove(n);
-					}
-
-					if (t != defaultCloakType)
-					{
-						Console.WriteLine("\t\tCloak type: " + t.ToString());
-						var ts = new List<string>();
-						if (t.HasFlag(Traits.UncloakType.Attack))
-							ts.Add("Attack");
-						if (t.HasFlag(Traits.UncloakType.Unload))
-							ts.Add("Unload");
-						if (t.HasFlag(Traits.UncloakType.Infiltrate))
-							ts.Add("Infiltrate");
-						if (t.HasFlag(Traits.UncloakType.Demolish))
-							ts.Add("Demolish");
-						if (t.HasFlag(Traits.UncloakType.Move))
-							ts.Add("Move");
-						node.Value.Nodes.Add(new MiniYamlNode("UncloakOn", ts.JoinWith(", ")));
-					}
-				}
-
-				// Rename WithDockingOverlay to WithDockedOverlay
-				if (engineVersion < 20160116)
-				{
-					if (node.Key.StartsWith("WithDockingOverlay"))
-						node.Key = "WithDockedOverlay" + node.Key.Substring(18);
-				}
-
-				if (engineVersion < 20160116)
-				{
-					if (node.Key == "DemoTruck")
-						node.Key = "AttackSuicides";
-				}
-
-				// Replaced GpsRemoveFrozenActor with FrozenUnderFogUpdatedByGps
-				if (engineVersion < 20160117)
-				{
-					if (node.Key == "GpsRemoveFrozenActor")
-					{
-						node.Key = "FrozenUnderFogUpdatedByGps";
-						node.Value.Nodes.Clear();
-					}
-				}
-
-				// Removed arbitrary defaults from InfiltrateForCash
-				if (engineVersion < 20160118)
-				{
-					if (node.Key == "InfiltrateForCash")
-					{
-						if (!node.Value.Nodes.Any(n => n.Key == "Percentage"))
-							node.Value.Nodes.Add(new MiniYamlNode("Percentage", "50"));
-
-						if (!node.Value.Nodes.Any(n => n.Key == "Minimum"))
-							node.Value.Nodes.Add(new MiniYamlNode("Minimum", "500"));
-
-						var sound = node.Value.Nodes.FirstOrDefault(n => n.Key == "SoundToVictim");
-						if (sound != null)
-						{
-							node.Value.Nodes.Remove(sound);
-							Console.WriteLine("The 'SoundToVictim' property of the 'InfiltrateForCash' trait has been");
-							Console.WriteLine("replaced with a 'Notification' property. Please add the sound file");
-							Console.WriteLine("'{0}' to your mod's audio notification yaml and".F(sound.Value.Value));
-							Console.WriteLine("update your mod's rules accordingly.");
-							Console.WriteLine();
-						}
-					}
-				}
-
-				if (engineVersion < 20160301)
-				{
-					// Renamed ROT -> TurnSpeed
-					if (node.Key == "ROT")
-						node.Key = "TurnSpeed";
-				}
-
-				if (engineVersion < 20160320)
-				{
-					// Renamed Parachutable.CorpseSequenceCollection to Image
-					if (node.Key == "CorpseSequenceCollection")
-						node.Key = "Image";
-
-					// Renamed WithBuildingExplosion.SequenceCollection to Image
-					if (node.Key == "SequenceCollection")
-						node.Key = "Image";
-				}
-
-				if (engineVersion < 20160321)
-				{
-					var parentKey = parent != null ? parent.Key.Split('@').First() : null;
-					if (node.Key == "Ticks" && parentKey == "DrawLineToTarget")
+					if (node.Key == "BeamDuration")
 						node.Key = "Duration";
-					if (node.Key == "ReloadTicks")
-						node.Key = "ReloadDelay";
-					if (node.Key == "SelfReloadTicks")
-						node.Key = "SelfReloadDelay";
-					if (node.Key == "LoadTicksPerBale")
-						node.Key = "BaleLoadDelay";
-					if (node.Key == "UnloadTicksPerBale")
-						node.Key = "BaleUnloadDelay";
-					if (node.Key == "TicksToHold")
-						node.Key = "HoldDuration";
-					if (node.Key == "Ticks" && parentKey == "SelfHealing")
-						node.Key = "Delay";
-					if (node.Key == "TicksToWaitBeforeReducingMoveRadius")
-						node.Key = "ReduceMoveRadiusDelay";
-					if (node.Key == "MinIdleWaitTicks")
-						node.Key = "MinIdleDelay";
-					if (node.Key == "MaxIdleWaitTicks")
-						node.Key = "MaxIdleWaitDelay";
-					if (node.Key == "ReloadTime")
-						node.Key = "ReloadDelay";
 				}
 
-				// Got rid of most remaining usages of float in a bid to further reduce desync risk
-				if (engineVersion < 20160328)
+				// Rename Bullet Angle to LaunchAngle
+				if (engineVersion < 20161016)
 				{
-					// Migrated ProductionQueue BuildSpeed to use int percentage instead of float
-					if (node.Key.StartsWith("ProductionQueue") || node.Key.StartsWith("ClassicProductionQueue"))
-					{
-						var buildSpeedNode = node.Value.Nodes.FirstOrDefault(x => x.Key == "BuildSpeed");
-						if (buildSpeedNode != null)
-						{
-							// The BuildSpeed value is now an int percentage, so multiply the float with 100.
-							var oldValue = FieldLoader.GetValue<float>("BuildSpeed", buildSpeedNode.Value.Value);
-							var newValue = (int)(oldValue * 100);
-							buildSpeedNode.Value.Value = newValue.ToString();
-						}
-					}
-
-					// Migrated StrategicVictoryConditions RatioRequired to use int percentage instead of float
-					if (node.Key.StartsWith("StrategicVictoryConditions"))
-					{
-						var ratioNode = node.Value.Nodes.FirstOrDefault(x => x.Key == "RatioRequired");
-						if (ratioNode != null)
-						{
-							// The RatioRequired value is now an int percentage, so multiply the float with 100.
-							var oldValue = FieldLoader.GetValue<float>("RatioRequired", ratioNode.Value.Value);
-							var newValue = (int)(oldValue * 100);
-							ratioNode.Value.Value = newValue.ToString();
-						}
-					}
-
-					// Migrated Minelayer.MinefieldDepth to use WDist instead of float
-					if (node.Key.StartsWith("Minelayer"))
-					{
-						var depthNode = node.Value.Nodes.FirstOrDefault(x => x.Key == "MinefieldDepth");
-						if (depthNode != null)
-						{
-							// The MinefieldDepth value is now a WDist, so multiply the float value with 1024.
-							var oldValue = FieldLoader.GetValue<float>("MinefieldDepth", depthNode.Value.Value);
-							var newValue = (int)(oldValue * 1024);
-							depthNode.Value.Value = newValue.ToString();
-						}
-					}
-
-					// Migrated SelfHealing to use int percentage instead of float
-					if (node.Key == "SelfHealing")
-					{
-						var healIfBelowNode = node.Value.Nodes.FirstOrDefault(x => x.Key == "HealIfBelow");
-						if (healIfBelowNode != null)
-						{
-							// The HealIfBelow value is now an int percentage, so multiply the float with 100.
-							var oldValue = FieldLoader.GetValue<float>("HealIfBelow", healIfBelowNode.Value.Value);
-							var newValue = (int)(oldValue * 100);
-							healIfBelowNode.Value.Value = newValue.ToString();
-						}
-					}
-
-					// Migrated EmitInfantryOnSell to use int percentage instead of float
-					if (node.Key == "EmitInfantryOnSell")
-					{
-						var valueNode = node.Value.Nodes.FirstOrDefault(x => x.Key == "ValuePercent");
-						var minHPNode = node.Value.Nodes.FirstOrDefault(x => x.Key == "MinHpPercent");
-
-						if (valueNode != null)
-						{
-							// The ValuePercent value is now an int percentage, but was previously geared towards
-							// percentage rather than float and divided by 100 internally so division by 100 is NOT needed.
-							var oldValue = FieldLoader.GetValue<float>("ValuePercent", valueNode.Value.Value);
-							var newValue = (int)oldValue;
-							valueNode.Value.Value = newValue.ToString();
-						}
-
-						if (minHPNode != null)
-						{
-							// The MinHpPercent value is now an int percentage, but was previously geared towards
-							// percentage rather than float and divided by 100 internally so division by 100 is NOT needed.
-							var oldValue = FieldLoader.GetValue<float>("MinHpPercent", minHPNode.Value.Value);
-							var newValue = (int)oldValue;
-							minHPNode.Value.Value = newValue.ToString();
-						}
-					}
-
-					// Migrated Captures and Capturable to use int percentage instead of float
-					if (node.Key == "Captures")
-					{
-						var sabotageHPRemNode = node.Value.Nodes.FirstOrDefault(x => x.Key == "SabotageHPRemoval");
-						if (sabotageHPRemNode != null)
-						{
-							// The SabotageHPRemoval value is now an int percentage, so multiply the float with 100.
-							var oldValue = FieldLoader.GetValue<float>("SabotageHPRemoval", sabotageHPRemNode.Value.Value);
-							var newValue = (int)(oldValue * 100);
-							sabotageHPRemNode.Value.Value = newValue.ToString();
-						}
-					}
-
-					if (node.Key == "Capturable")
-					{
-						var captThreshNode = node.Value.Nodes.FirstOrDefault(x => x.Key == "CaptureThreshold");
-						if (captThreshNode != null)
-						{
-							// The CaptureThreshold value is now an int percentage, so multiply the float with 100.
-							var oldValue = FieldLoader.GetValue<float>("CaptureThreshold", captThreshNode.Value.Value);
-							var newValue = (int)(oldValue * 100);
-							captThreshNode.Value.Value = newValue.ToString();
-						}
-					}
+					if (node.Key == "Angle")
+						node.Key = "LaunchAngle";
 				}
 
-				if (engineVersion < 20160402)
+				UpgradeWeaponRules(modData, engineVersion, ref node.Value.Nodes, node, depth + 1);
+			}
+		}
+
+		static int RemapD2k106Sequence(int frame)
+		{
+			if (frame < 2518)
+				return frame;
+			if (frame < 3370)
+				return frame + 248;
+			if (frame < 4011)
+				return frame + 253;
+			if (frame < 4036)
+				return frame + 261;
+			return frame + 264;
+		}
+
+		internal static void UpgradeSequences(ModData modData, int engineVersion, ref List<MiniYamlNode> nodes, MiniYamlNode parent, int depth)
+		{
+			foreach (var node in nodes)
+			{
+				if (engineVersion < 20160730 && modData.Manifest.Id == "d2k" && depth == 2)
 				{
-					// Fix misleading property naming.
-					if (node.Key == "EffectSequence" && parent.Key == "SpawnActorPower")
-						node.Key = "EffectImage";
+					if (node.Key == "Start")
+						node.Value.Value = RemapD2k106Sequence(FieldLoader.GetValue<int>("", node.Value.Value)).ToString();
+					if (node.Key == "Frames")
+						node.Value.Value = FieldLoader.GetValue<int[]>("", node.Value.Value)
+							.Select(RemapD2k106Sequence).JoinWith(", ");
 				}
 
-				UpgradeActorRules(engineVersion, ref node.Value.Nodes, node, depth + 1);
+				UpgradeSequences(modData, engineVersion, ref node.Value.Nodes, node, depth + 1);
 			}
 		}
 
-		internal static void UpgradeWeaponRules(int engineVersion, ref List<MiniYamlNode> nodes, MiniYamlNode parent, int depth)
+		internal static void UpgradeTileset(ModData modData, int engineVersion, ref List<MiniYamlNode> nodes, MiniYamlNode parent, int depth)
 		{
 			foreach (var node in nodes)
 			{
-				if (engineVersion < 20160124)
+				// Add rules here
+				UpgradeTileset(modData, engineVersion, ref node.Value.Nodes, node, depth + 1);
+			}
+		}
+
+		internal static void UpgradeCursors(ModData modData, int engineVersion, ref List<MiniYamlNode> nodes, MiniYamlNode parent, int depth)
+		{
+			foreach (var node in nodes)
+			{
+				// Add rules here
+				UpgradeCursors(modData, engineVersion, ref node.Value.Nodes, node, depth + 1);
+			}
+		}
+
+		internal static void UpgradePlayers(ModData modData, int engineVersion, ref List<MiniYamlNode> nodes, MiniYamlNode parent, int depth)
+		{
+			foreach (var node in nodes)
+			{
+				// Add rules here
+				UpgradePlayers(modData, engineVersion, ref node.Value.Nodes, node, depth + 1);
+			}
+		}
+
+		internal static void UpgradeChromeMetrics(ModData modData, int engineVersion, ref List<MiniYamlNode> nodes, MiniYamlNode parent, int depth)
+		{
+			foreach (var node in nodes)
+			{
+				// Add rules here
+				UpgradeChromeMetrics(modData, engineVersion, ref node.Value.Nodes, node, depth + 1);
+			}
+		}
+
+		internal static void UpgradeChromeLayout(ModData modData, int engineVersion, ref List<MiniYamlNode> nodes, MiniYamlNode parent, int depth)
+		{
+			foreach (var node in nodes)
+			{
+				// Add rules here
+				UpgradeChromeLayout(modData, engineVersion, ref node.Value.Nodes, node, depth + 1);
+			}
+		}
+
+		internal static void ModifyCPos(ref string input, CVec vector)
+		{
+			var oldCPos = FieldLoader.GetValue<CPos>("(value)", input);
+			var newCPos = oldCPos + vector;
+			input = newCPos.ToString();
+		}
+
+		internal static void UpgradeActors(ModData modData, int engineVersion, ref List<MiniYamlNode> nodes, MiniYamlNode parent, int depth)
+		{
+			foreach (var node in nodes)
+			{
+				// Fix RA building footprints to not use _ when it's not necessary
+				if (engineVersion < 20160619 && modData.Manifest.Id == "ra" && depth == 1)
 				{
-					node.Value.Nodes.RemoveAll(x => x.Key == "Charges");
+					var buildings = new List<string>() { "tsla", "gap", "agun", "apwr", "fapw" };
+					if (buildings.Contains(parent.Value.Value) && node.Key == "Location")
+						ModifyCPos(ref node.Value.Value, new CVec(0, 1));
 				}
 
-				// Enhance CreateEffectWarhead
-				if (engineVersion < 20160131)
+				// Fix TD building footprints to not use _ when it's not necessary
+				if (engineVersion < 20160619 && modData.Manifest.Id == "cnc" && depth == 1)
 				{
-					if (node.Key.StartsWith("Warhead") && node.Value.Value == "CreateEffect")
-					{
-						// Add support for multiple explosions to CreateEffectWarhead
-						var explosionNode = node.Value.Nodes.FirstOrDefault(x => x.Key == "Explosion");
-						if (explosionNode != null)
-							explosionNode.Key = "Explosions";
-
-						// Add support for multiple impact sounds to CreateEffectWarhead
-						var impactSoundNode = node.Value.Nodes.FirstOrDefault(x => x.Key == "ImpactSound");
-						if (impactSoundNode != null)
-							impactSoundNode.Key = "ImpactSounds";
-					}
+					var buildings = new List<string>() { "atwr", "obli", "tmpl", "weap", "hand" };
+					if (buildings.Contains(parent.Value.Value) && node.Key == "Location")
+						ModifyCPos(ref node.Value.Value, new CVec(0, 1));
 				}
 
-				// Rename some speed-related Missile properties
-				if (engineVersion < 20160205)
-				{
-					var mod = Game.ModData.Manifest.Mod.Id;
-					if (mod == "ts")
-					{
-						if (node.Key == "Projectile" && node.Value.Value == "Missile")
-						{
-							node.Value.Nodes.Add(new MiniYamlNode("MinimumLaunchSpeed", "75"));
-							node.Value.Nodes.Add(new MiniYamlNode("Speed", "384"));
-						}
-					}
-					else
-					{
-						if (node.Key == "MaximumLaunchSpeed" && parent != null && parent.Value.Value == "Missile")
-							node.Key = "Speed";
-					}
-				}
-
-				UpgradeWeaponRules(engineVersion, ref node.Value.Nodes, node, depth + 1);
-			}
-		}
-
-		internal static void UpgradeTileset(int engineVersion, ref List<MiniYamlNode> nodes, MiniYamlNode parent, int depth)
-		{
-			foreach (var node in nodes)
-			{
-				// Add rules here
-				UpgradeTileset(engineVersion, ref node.Value.Nodes, node, depth + 1);
-			}
-		}
-
-		internal static void UpgradeCursors(int engineVersion, ref List<MiniYamlNode> nodes, MiniYamlNode parent, int depth)
-		{
-			foreach (var node in nodes)
-			{
-				// Add rules here
-				UpgradeCursors(engineVersion, ref node.Value.Nodes, node, depth + 1);
-			}
-		}
-
-		internal static void UpgradePlayers(int engineVersion, ref List<MiniYamlNode> nodes, MiniYamlNode parent, int depth)
-		{
-			foreach (var node in nodes)
-			{
-				// Add rules here
-				UpgradePlayers(engineVersion, ref node.Value.Nodes, node, depth + 1);
-			}
-		}
-
-		internal static void UpgradeChromeMetrics(int engineVersion, ref List<MiniYamlNode> nodes, MiniYamlNode parent, int depth)
-		{
-			foreach (var node in nodes)
-			{
-				// Add rules here
-				UpgradeChromeMetrics(engineVersion, ref node.Value.Nodes, node, depth + 1);
-			}
-		}
-
-		internal static void UpgradeChromeLayout(int engineVersion, ref List<MiniYamlNode> nodes, MiniYamlNode parent, int depth)
-		{
-			foreach (var node in nodes)
-			{
-				// Add rules here
-				UpgradeChromeLayout(engineVersion, ref node.Value.Nodes, node, depth + 1);
-			}
-		}
-
-		internal static void UpgradeActors(int engineVersion, ref List<MiniYamlNode> nodes, MiniYamlNode parent, int depth)
-		{
-			foreach (var node in nodes)
-			{
-				// Add rules here
-				UpgradeActors(engineVersion, ref node.Value.Nodes, node, depth + 1);
+				UpgradeActors(modData, engineVersion, ref node.Value.Nodes, node, depth + 1);
 			}
 		}
 

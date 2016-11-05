@@ -70,7 +70,9 @@ namespace OpenRA.Mods.Common.Traits
 				Footprint = new ReadOnlyDictionary<CPos, SubCell>(footprint);
 			}
 
-			var tooltip = Info.TraitInfoOrDefault<EditorOnlyTooltipInfo>() as TooltipInfoBase ?? Info.TraitInfoOrDefault<TooltipInfo>();
+			var tooltip = Info.TraitInfos<EditorOnlyTooltipInfo>().FirstOrDefault(Exts.IsTraitEnabled) as TooltipInfoBase
+				?? Info.TraitInfos<TooltipInfo>().FirstOrDefault(Exts.IsTraitEnabled);
+
 			Tooltip = (tooltip == null ? " < " + Info.Name + " >" : tooltip.Name) + "\n" + owner.Name + " (" + owner.Faction + ")"
 				+ "\nID: " + ID + "\nType: " + Info.Name;
 
@@ -166,6 +168,11 @@ namespace OpenRA.Mods.Common.Traits
 		public ActorReference Export()
 		{
 			return new ActorReference(actor.Type, actor.Save().ToDictionary());
+		}
+
+		public override string ToString()
+		{
+			return "{0} {1}".F(Info.Name, ID);
 		}
 	}
 }

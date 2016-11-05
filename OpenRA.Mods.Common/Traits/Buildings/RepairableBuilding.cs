@@ -35,6 +35,9 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Suffixed by the internal repairing player name.")]
 		public readonly string IndicatorPalettePrefix = "player";
 
+		[Desc("Experience gained by a player for repairing structures of allied players.")]
+		public readonly int PlayerExperience = 0;
+
 		public override object Create(ActorInitializer init) { return new RepairableBuilding(init.Self, this); }
 	}
 
@@ -115,7 +118,7 @@ namespace OpenRA.Mods.Common.Traits
 				var cost = Math.Max(1, (hpToRepair * Info.RepairPercent * buildingValue) / (health.MaxHP * 100));
 
 				// TakeCash will return false if the player can't pay, and will stop him from contributing this Tick
-				var activePlayers = Repairers.Count(player => player.PlayerActor.Trait<PlayerResources>().TakeCash(cost));
+				var activePlayers = Repairers.Count(player => player.PlayerActor.Trait<PlayerResources>().TakeCash(cost, true));
 
 				RepairActive = activePlayers > 0;
 
@@ -129,10 +132,20 @@ namespace OpenRA.Mods.Common.Traits
 
 				// activePlayers won't cause IndexOutOfRange because we capped the max amount of players
 				// to the length of the array
-				self.InflictDamage(self, -(hpToRepair * Info.RepairBonuses[activePlayers - 1] / 100), null);
+				self.InflictDamage(self, new Damage(-(hpToRepair * Info.RepairBonuses[activePlayers - 1] / 100)));
 
 				if (health.DamageState == DamageState.Undamaged)
 				{
+					Repairers.Do(r =>
+					{
+						if (r == self.Owner)
+							return;
+
+						var exp = r.PlayerActor.TraitOrDefault<PlayerExperience>();
+						if (exp != null)
+							exp.GiveExperience(Info.PlayerExperience);
+					});
+
 					Repairers.Clear();
 					RepairActive = false;
 					return;

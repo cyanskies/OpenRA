@@ -20,18 +20,12 @@ Packages:
 	~scores.mix
 	~sidenc01.mix
 	~sidenc02.mix
-	~gmenu.mix
 	~e01scd01.mix
 	~e01scd02.mix
-	~maps01.mix
-	~maps02.mix
 	~movies01.mix
 	~movies02.mix
-	~multi.mix
-	~patch.mix
 	~sidecd01.mix
 	~sidecd02.mix
-	~tibsun.mix
 	~cache.mix
 	~conquer.mix
 	~isosnow.mix
@@ -87,6 +81,7 @@ Rules:
 	ts|rules/shared-support.yaml
 	ts|rules/shared-vehicles.yaml
 	ts|rules/trees.yaml
+	ts|rules/bridges.yaml
 
 Weapons:
 	ts|weapons/bombsandgrenades.yaml
@@ -107,6 +102,7 @@ Sequences:
 	ts|sequences/structures.yaml
 	ts|sequences/vehicles.yaml
 	ts|sequences/trees.yaml
+	ts|sequences/bridges.yaml
 
 VoxelSequences:
 	ts|sequences/voxels.yaml
@@ -117,6 +113,7 @@ TileSets:
 
 MapGrid:
 	TileSize: 48,24
+	EnableDepthBuffer: True
 	Type: RectangularIsometric
 	MaximumTerrainHeight: 16
 	SubCellOffsets: 0,0,0, -256,128,0, 0,-128,0, 256,128,0
@@ -194,20 +191,6 @@ LoadScreen: LogoStripeLoadScreen
 	Image: ts|uibits/loadscreen.png
 	Text: Updating EVA installation..., Changing perspective...
 
-ContentInstaller:
-	TestFiles: ^Content/ts/cache.mix, ^Content/ts/conquer.mix, ^Content/ts/isosnow.mix, ^Content/ts/isotemp.mix, ^Content/ts/local.mix, ^Content/ts/sidec01.mix, ^Content/ts/sidec02.mix, ^Content/ts/sno.mix, ^Content/ts/snow.mix, ^Content/ts/sounds.mix, ^Content/ts/speech01.mix, ^Content/ts/tem.mix, ^Content/ts/temperat.mix
-	PackageMirrorList: http://www.openra.net/packages/ts-mirrors.txt
-	DiskTestFiles: MULTI.MIX, INSTALL/TIBSUN.MIX
-	CopyFilesFromCD:
-		.: INSTALL/TIBSUN.MIX, SCORES.MIX, MULTI.MIX
-	PackageToExtractFromCD: INSTALL/TIBSUN.MIX
-	ExtractFilesFromCD:
-		.: cache.mix, conquer.mix, isosnow.mix, isotemp.mix, local.mix, sidec01.mix, sidec02.mix, sno.mix, snow.mix, sounds.mix, speech01.mix, tem.mix, temperat.mix
-	ShippedSoundtracks: 2
-	MusicPackageMirrorList: http://www.openra.net/packages/ts-music-mirrors.txt
-	InstallShieldCABFilePackageIds: 332
-	InstallShieldCABFileIds: 323, 364
-
 ServerTraits:
 	LobbyCommands
 	PlayerPinger
@@ -277,3 +260,25 @@ GameSpeeds:
 		OrderLatency: 6
 
 ColorValidator:
+
+ModContent:
+	InstallPromptMessage: Tiberian Sun requires artwork and audio from the original game.\n\nQuick Install will automatically download this content (without music\nor videos) from a mirror of the 2012 Tiberian Sun freeware release.\n\nAdvanced Install includes options for downloading the music and for\ncopying the videos and other content from an original game disc.
+	QuickDownload: basefiles
+	HeaderMessage: Game content may be extracted from the original game discs or an\nexisting digital install. OpenRA can also download the base game\nfiles from an online mirror of the 2012 freeware release of TS.
+	Packages:
+		base: Base Game Files
+			TestFiles: ^Content/ts/cache.mix, ^Content/ts/conquer.mix, ^Content/ts/isosnow.mix, ^Content/ts/isotemp.mix, ^Content/ts/local.mix, ^Content/ts/sidec01.mix, ^Content/ts/sidec02.mix, ^Content/ts/sno.mix, ^Content/ts/snow.mix, ^Content/ts/sounds.mix, ^Content/ts/speech01.mix, ^Content/ts/tem.mix, ^Content/ts/temperat.mix
+			Sources: tibsun, tibsun-linux, tfd, origin
+			Required: true
+			Download: basefiles
+		music: Base Game Music
+			TestFiles: ^Content/ts/scores.mix
+			Sources: tibsun, tibsun-linux, tfd, origin
+			Download: music
+	Downloads:
+		ts|installer/downloads.yaml
+	Sources:
+		ts|installer/downloads.yaml
+		ts|installer/firstdecade.yaml
+		ts|installer/origin.yaml
+		ts|installer/tibsun.yaml
